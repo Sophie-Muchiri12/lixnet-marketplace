@@ -219,7 +219,7 @@ export default function Marketplace() {
         >
             <div className="max-w-7xl mx-auto px-4 py-8">
                 {/* Hero Section */}
-                <div className="bg-gradient-to-r from-brand-blue to-dark-blue rounded-lg p-8 mb-8 text-card-color text-center md:h-[300px] flex items-center justify-center">
+                <div className="bg-linear-to-r from-brand-blue to-dark-blue rounded-lg p-8 mb-8 text-card-color text-center md:h-[300px] flex items-center justify-center">
                     <div className="max-w-3xl mx-auto">
                         <h1 className="text-3xl md:text-4xl font-bold mb-4">
                             Lixnet Software Marketplace

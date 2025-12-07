@@ -1,20 +1,20 @@
-# Payment Method Implementation Plan
 
-## Database & Model Updates
-- [x] Create migration to add `payment_method` column to orders table
-- [x] Update Order model to include `payment_method` in fillable array
 
-## Backend Updates
-- [x] Modify OrderController store method to accept and validate payment_method
-- [x] Ensure payment_method is stored when creating orders
+# Cloudinary Integration & Subscription Plans Implementation
 
-## Frontend Implementation
-- [ ] Create `Checkout.tsx` page for order review and payment method selection
-- [ ] Create `PaymentMethodSelector.tsx` component (initially with Pesapal only)
-- [ ] Add web routes for checkout page
-- [ ] Update cart context/navigation to link to checkout
+## Backend Setup
+- [ ] Install Cloudinary PHP SDK
+- [ ] Configure Cloudinary credentials in config/services.php and .env
+- [ ] Create ImageUploadService for handling uploads/deletions
+- [ ] Update ProductController to handle image uploads in store/update methods
+- [ ] Add validation for subscription tiers in ProductController
+
+## Frontend Updates
+- [ ] Update ProductCard component to display product images
+- [ ] Update Marketplace page to show images in product grid
+- [ ] Create admin product form for image upload and subscription plan management
 
 ## Testing & Verification
-- [x] Run database migration
-- [ ] Test complete checkout and payment flow
-- [ ] Verify Pesapal integration works end-to-end
+- [ ] Test image upload functionality
+- [ ] Test subscription plan creation and selection
+- [ ] Verify frontend displays images correctly
