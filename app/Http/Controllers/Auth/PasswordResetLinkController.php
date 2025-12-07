@@ -3,9 +3,10 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Models\User;
+use App\Services\VerificationService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Password;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -23,8 +24,6 @@ class PasswordResetLinkController extends Controller
 
     /**
      * Handle an incoming password reset link request.
-     *
-     * @throws \Illuminate\Validation\ValidationException
      */
     public function store(Request $request): RedirectResponse
     {
@@ -32,10 +31,24 @@ class PasswordResetLinkController extends Controller
             'email' => 'required|email',
         ]);
 
-        Password::sendResetLink(
-            $request->only('email')
-        );
+        // Check if user exists
+        $user = User::where('email', $request->email)->first();
 
-        return back()->with('status', __('A reset link will be sent if the account exists.'));
+        if (!$user) {
+            // Don't reveal if user exists (security best practice)
+            return back()->with('status', 'If an account exists with that email, a reset code will be sent.');
+        }
+
+        // Send verification code for password reset
+        VerificationService::sendVerificationCode($user, 'email', 'password_reset');
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'message' => 'If an account exists with that email, a reset code will be sent.',
+                'redirect' => route('password.code-verify'),
+            ]);
+        }
+
+        return back()->with('status', 'If an account exists with that email, a reset code will be sent.');
     }
 }

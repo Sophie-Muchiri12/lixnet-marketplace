@@ -8,6 +8,8 @@ use App\Http\Controllers\Auth\NewPasswordController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Auth\VerifyEmailController;
+use App\Http\Controllers\Auth\CodeVerificationController;
+use App\Http\Controllers\Auth\PasswordResetCodeController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('guest')->group(function () {
@@ -29,6 +31,20 @@ Route::middleware('guest')->group(function () {
     Route::post('forgot-password', [PasswordResetLinkController::class, 'store'])
         ->name('password.email');
 
+    // Password reset with code verification
+    Route::get('password-reset/verify-code', [PasswordResetCodeController::class, 'verifyCode'])
+        ->name('password.code-verify');
+
+    Route::post('password-reset/verify-code', [PasswordResetCodeController::class, 'store'])
+        ->name('password.code-verify.store');
+
+    Route::get('password-reset/new-password', [PasswordResetCodeController::class, 'resetForm'])
+        ->name('password.reset-form');
+
+    Route::post('password-reset/new-password', [PasswordResetCodeController::class, 'updatePassword'])
+        ->name('password.code-reset.update');
+
+    // Legacy password reset routes (optional, can be removed)
     Route::get('reset-password/{token}', [NewPasswordController::class, 'create'])
         ->name('password.reset');
 
@@ -37,12 +53,20 @@ Route::middleware('guest')->group(function () {
 });
 
 Route::middleware('auth')->group(function () {
-    Route::get('verify-email', EmailVerificationPromptController::class)
+    // Email verification with code
+    Route::get('verify-email', [CodeVerificationController::class, 'create'])
         ->name('verification.notice');
 
-    Route::get('verify-email/{id}/{hash}', VerifyEmailController::class)
-        ->middleware(['signed', 'throttle:6,1'])
+    Route::post('verify-email', [CodeVerificationController::class, 'store'])
         ->name('verification.verify');
+
+    Route::post('verify-email/resend', [CodeVerificationController::class, 'resend'])
+        ->name('verification.resend');
+
+    // Legacy email verification routes (optional, can be removed)
+    Route::get('verify-email/{id}/{hash}', [VerifyEmailController::class])
+        ->middleware(['signed', 'throttle:6,1'])
+        ->name('verification.verify.legacy');
 
     Route::post('email/verification-notification', [EmailVerificationNotificationController::class, 'store'])
         ->middleware('throttle:6,1')

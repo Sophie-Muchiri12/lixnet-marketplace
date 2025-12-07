@@ -151,6 +151,9 @@ export function MarketplaceHeader({
                                         <a href="/orders" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                                             Orders
                                         </a>
+                                        <a href="/my-subscriptions" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                            Subscriptions
+                                        </a>
                                         <button
                                             onClick={handleSignOut}
                                             className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
@@ -179,10 +182,10 @@ export function MarketplaceHeader({
                             <ShoppingCart className="w-4 h-4 mr-1" />
                             <span>Cart</span>
                             {cartState.totalItems > 0 && (
-    <div className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center border border-white">
-        {cartState.totalItems}
-    </div>
-)}
+                                <div className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center border border-white">
+                                    {cartState.totalItems}
+                                </div>
+                            )}
                         </Button>
                     </div>
                 </div>

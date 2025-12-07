@@ -113,4 +113,23 @@ return [
         'name' => env('MAIL_FROM_NAME', 'Example'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Markdown Mail Settings
+    |--------------------------------------------------------------------------
+    |
+    | If you are using Markdown based email rendering, define the theme and
+    | any paths that should be registered with the markdown engine so that
+    | you can use them when rendering your mailable messages.
+    |
+    */
+
+    'markdown' => [
+        'theme' => 'default',
+        'paths' => [
+            resource_path('views/vendor/mail'),
+        ],
+        'logo' => asset('logo.jpg'), // Update path to match your logo location
+    ],
+
 ];
