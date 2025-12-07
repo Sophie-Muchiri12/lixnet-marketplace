@@ -112,6 +112,7 @@ export default function ProductDetails({ product }: ProductDetailsProps) {
   const [isRedirecting, setIsRedirecting] = useState(false);
   const [hasActiveSubscription, setHasActiveSubscription] = useState(false);
   const [checkingSubscription, setCheckingSubscription] = useState(true);
+  const [currentSubscriptionTier, setCurrentSubscriptionTier] = useState<string | null>(null);
 
   // Check if user has active subscription to this product
   React.useEffect(() => {
@@ -130,6 +131,7 @@ export default function ProductDetails({ product }: ProductDetailsProps) {
 
       if (!response.ok) {
         setHasActiveSubscription(false);
+        setCurrentSubscriptionTier(null);
         return;
       }
 
@@ -137,14 +139,21 @@ export default function ProductDetails({ product }: ProductDetailsProps) {
       const subscriptions = data.data?.data || data.data || [];
       
       // Check if user has active subscription to this product
-      const hasSubscription = subscriptions.some(
+      const activeSubscription = subscriptions.find(
         (sub: any) => sub.product_id === product.id && sub.status === 'active'
       );
       
-      setHasActiveSubscription(hasSubscription);
+      if (activeSubscription) {
+        setHasActiveSubscription(true);
+        setCurrentSubscriptionTier(activeSubscription.tier || null);
+      } else {
+        setHasActiveSubscription(false);
+        setCurrentSubscriptionTier(null);
+      }
     } catch (error) {
       console.error('Error checking subscription:', error);
       setHasActiveSubscription(false);
+      setCurrentSubscriptionTier(null);
     } finally {
       setCheckingSubscription(false);
     }
@@ -321,14 +330,17 @@ export default function ProductDetails({ product }: ProductDetailsProps) {
           <div className="grid md:grid-cols-3 gap-6 mb-8">
             {Object.entries(product.subscription_tiers).map(([tier, tierData]) => {
               const isSelected = selectedTier === tier;
+              const isCurrentPlan = currentSubscriptionTier === tier;
               const features = parseFeatures(tierData.features);
 
               return (
                 <div
                   key={tier}
-                  onClick={() => handleSelectTier(tier)}
-                  className={`rounded-lg border-2 transition cursor-pointer p-6 ${
-                    isSelected
+                  onClick={() => !isCurrentPlan && handleSelectTier(tier)}
+                  className={`rounded-lg border-2 transition ${!isCurrentPlan ? 'cursor-pointer' : 'cursor-not-allowed'} p-6 ${
+                    isCurrentPlan
+                      ? 'border-green-500 bg-green-50'
+                      : isSelected
                       ? 'border-brand-blue bg-blue-50'
                       : 'border-border-color bg-card-color hover:border-brand-blue'
                   }`}
@@ -357,7 +369,15 @@ export default function ProductDetails({ product }: ProductDetailsProps) {
                   </div>
 
                   {/* Select Button */}
-                  {isSelected ? (
+                  {isCurrentPlan ? (
+                    <button
+                      disabled
+                      className="w-full bg-green-600 text-white py-3 rounded-lg font-semibold flex items-center justify-center gap-2 hover:bg-green-600 transition cursor-not-allowed opacity-90"
+                    >
+                      <Check size={20} />
+                      Current Plan
+                    </button>
+                  ) : isSelected ? (
                     <button
                       className="w-full bg-brand-blue text-white py-3 rounded-lg font-semibold flex items-center justify-center gap-2 hover:bg-dark-blue transition"
                     >
@@ -378,7 +398,7 @@ export default function ProductDetails({ product }: ProductDetailsProps) {
           </div>
 
           {/* Add to Cart Button */}
-          {selectedTier && (
+          {selectedTier && !currentSubscriptionTier && (
             <div className="flex gap-4">
               <Button
                 onClick={() => handleAddToCart(selectedTier)}
