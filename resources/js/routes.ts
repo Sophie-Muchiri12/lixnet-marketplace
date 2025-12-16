@@ -33,6 +33,8 @@ export const marketplace = () => '/';
 export const account = () => '/account';
 export const profile = () => '/profile';
 export const orders = () => '/orders';
+// Settings routes
+export const appearance = () => '/settings/appearance';
 
 // Agent routes
 export const agentDashboard = () => '/agent/dashboard';
