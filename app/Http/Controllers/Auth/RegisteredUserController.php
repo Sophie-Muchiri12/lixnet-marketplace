@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Services\VerificationService;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -37,20 +38,24 @@ class RegisteredUserController extends Controller
             'name' => $request->name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
-            'role' => 'user', // Default role
+            'role' => 'user',
         ]);
 
         event(new Registered($user));
+
+        // Send verification code to email
+        VerificationService::sendVerificationCode($user, 'email', 'email_verification');
 
         Auth::login($user);
 
         if ($request->expectsJson()) {
             return response()->json([
                 'user' => $user,
-                'redirect' => route('marketplace'),
+                'redirect' => route('verification.notice'),
+                'message' => 'Registration successful. Please verify your email.',
             ]);
         }
 
-        return redirect()->route('marketplace');
+        return redirect()->route('verification.notice')->with('status', 'Registration successful. Check your email for verification code.');
     }
 }

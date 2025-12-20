@@ -1,9 +1,11 @@
-import { Star, StarHalf, Plus, Check, Briefcase, PiggyBank, GraduationCap, Calculator, Truck, ShoppingBag } from 'lucide-react';
+import { Star, StarHalf, Plus, Check, Briefcase, PiggyBank, GraduationCap, Calculator, Truck, ShoppingBag, Eye, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useCart } from '@/context/cart-context';
-import { JSX } from 'react';
+import { JSX, useEffect, useState } from 'react';
+import toast from 'react-hot-toast';
+import { router } from '@inertiajs/react';
 
 interface Product {
     id: number;
@@ -18,6 +20,7 @@ interface Product {
         name: string;
         slug: string;
     };
+    is_subscription?: boolean;
 }
 
 interface ProductCardProps {
@@ -58,7 +61,6 @@ function getProductIcon(categoryName: string) {
         'Inventory': <Truck className='size-16 text-brand-blue' />,
     };
 
-    // Find matching category or default
     const iconClass = Object.entries(iconMap).find(([key]) =>
         categoryName.toLowerCase().includes(key.toLowerCase())
     )?.[1] || <Briefcase />;
@@ -70,10 +72,74 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
     const { addItem, getItemQuantity } = useCart();
     const itemQuantity = getItemQuantity(product.id);
     const iconClass = getProductIcon(product.category.name);
+    const [hasActiveSubscription, setHasActiveSubscription] = useState(false);
+    const [checkingSubscription, setCheckingSubscription] = useState(false);
 
-    const handleAddToCart = () => {
-        addItem(product, 1);
-        onAddToCart?.(product);
+    // Check if user has active subscription to this product
+    useEffect(() => {
+        if (product.is_subscription) {
+            checkUserSubscription();
+        }
+    }, [product.id, product.is_subscription]);
+
+    const checkUserSubscription = async () => {
+        try {
+            setCheckingSubscription(true);
+            const response = await fetch('/api/subscriptions', {
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                },
+            });
+
+            if (!response.ok) {
+                setHasActiveSubscription(false);
+                return;
+            }
+
+            const data = await response.json();
+            const subscriptions = data.data?.data || data.data || [];
+            
+            // Check if user has active subscription to this product
+            const hasSubscription = subscriptions.some(
+                (sub: any) => sub.product_id === product.id && sub.status === 'active'
+            );
+            
+            setHasActiveSubscription(hasSubscription);
+        } catch (error) {
+            console.error('Error checking subscription:', error);
+            setHasActiveSubscription(false);
+        } finally {
+            setCheckingSubscription(false);
+        }
+    };
+
+    const handleAddToCart = async () => {
+        // For subscription products, they must select a plan first
+        if (product.is_subscription) {
+            toast.error('Please select a plan from the product details page');
+            handleViewDetails();
+            return;
+        }
+
+        try {
+            await addItem(product, 1);
+            onAddToCart?.(product);
+            toast.success('Added to cart!');
+        } catch (error) {
+            console.error('Failed to add item:', error);
+            toast.error('Failed to add to cart');
+        }
+    };
+
+    const handleViewDetails = () => {
+        // Navigate to product details web route (singular /product, not /products)
+        router.visit(`/product/${product.id}`);
+    };
+
+    const handleViewPlans = () => {
+        // Navigate to user's subscription page
+        router.visit(`/my-subscriptions`);
     };
 
     const formatPrice = (price: number) => {
@@ -109,10 +175,16 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
                 </div>
 
                 {/* Price */}
-                <div className="mb-3">
+                <div className="mb-4">
                     <div className="text-2xl font-bold text-dark-blue">
-                        {formatPrice(product.price)}/mo
+                        {formatPrice(product.price)}
+                        {product.is_subscription && <span className="text-lg">/month</span>}
                     </div>
+                    {product.is_subscription && (
+                        <div className="text-xs text-gray-500 mt-1">
+                            starting price - view details for other plans
+                        </div>
+                    )}
                     {product.note && (
                         <div className="text-xs text-gray-500 mt-1">
                             {product.note}
@@ -120,24 +192,61 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
                     )}
                 </div>
 
-                {/* Add to Cart Button */}
-                <Button
-                    onClick={handleAddToCart}
-                    className="w-full bg-brand-blue hover:bg-[#0052a3] text-white font-medium py-2.5 transition-colors"
-                    disabled={false}
-                >
-                    {itemQuantity > 0 ? (
-                        <>
-                            <Check className="w-4 h-4 mr-2" />
-                            Added ({itemQuantity})
-                        </>
+                {/* Action Buttons */}
+                <div className="flex flex-col gap-2">
+                    {/* For subscribed products - View Details and My Plans side by side */}
+                    {product.is_subscription && hasActiveSubscription && !checkingSubscription ? (
+                        <div className="flex gap-2">
+                            <Button
+                                onClick={handleViewDetails}
+                                variant="outline"
+                                className="flex-1 border-2 border-brand-blue text-brand-blue hover:bg-blue-50 font-medium py-2 transition-colors text-sm"
+                            >
+                                <Eye className="w-4 h-4 mr-1" />
+                                View Details
+                            </Button>
+                            <Button
+                                onClick={handleViewPlans}
+                                className="flex-1 bg-blue-900 hover:bg-blue-600 text-white font-medium py-2 transition-colors text-sm"
+                            >
+                                <Zap className="w-4 h-4 mr-1" />
+                                My Plans
+                            </Button>
+                        </div>
                     ) : (
                         <>
-                            <Plus className="w-4 h-4 mr-2" />
-                            Add to Cart
+                            {/* View Details Button - Left aligned for non-subscribed */}
+                            <Button
+                                onClick={handleViewDetails}
+                                variant="outline"
+                                className="border-2 border-brand-blue text-brand-blue hover:bg-blue-50 font-medium py-2 transition-colors text-sm"
+                            >
+                                <Eye className="w-4 h-4 mr-1" />
+                                View Details
+                            </Button>
+
+                            {/* Add to Cart Button - Only for non-subscription products */}
+                            {!product.is_subscription && (
+                                <Button
+                                    onClick={handleAddToCart}
+                                    className="w-full bg-brand-blue hover:bg-[#0052a3] text-white font-medium py-2.5 transition-colors"
+                                >
+                                    {itemQuantity > 0 ? (
+                                        <>
+                                            <Check className="w-4 h-4 mr-2" />
+                                            In Cart ({itemQuantity})
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Plus className="w-4 h-4 mr-2" />
+                                            Add to Cart
+                                        </>
+                                    )}
+                                </Button>
+                            )}
                         </>
                     )}
-                </Button>
+                </div>
 
                 {/* Category Badge */}
                 <div className="mt-3">

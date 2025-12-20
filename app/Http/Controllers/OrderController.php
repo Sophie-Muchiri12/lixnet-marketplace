@@ -7,25 +7,169 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Cart;
 use App\Services\PesapalService;
+use App\Services\SubscriptionService;
 use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
-use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Log;
 
 class OrderController extends Controller
 {
     protected $pesapalService;
+    protected $subscriptionService;
 
-    public function __construct(PesapalService $pesapalService)
-    {
+    public function __construct(
+        PesapalService $pesapalService,
+        SubscriptionService $subscriptionService
+    ) {
         $this->pesapalService = $pesapalService;
+        $this->subscriptionService = $subscriptionService;
+    }
+
+    /**
+     * Initiate payment for order with payment method selection
+     */
+    public function initiatePayment($id, Request $request): JsonResponse
+    {
+        try {
+            // Validate payment method if provided
+            $validator = Validator::make($request->all(), [
+                'payment_method' => 'nullable|in:CARD,MPESA,BANK_TRANSFER'
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Invalid payment method',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+
+            Log::info('Initiating payment for order', [
+                'order_id' => $id,
+                'user_id' => Auth::id(),
+                'payment_method' => $request->input('payment_method')
+            ]);
+
+            $order = Order::where('user_id', Auth::id())
+                ->with('items.product')
+                ->findOrFail($id);
+
+            // Check if order can be paid
+            if (!$order->canPay()) {
+                Log::warning('Order cannot be paid', [
+                    'order_id' => $order->id,
+                    'status' => $order->status,
+                    'amount' => $order->total_amount
+                ]);
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Order cannot be paid. Invalid status: ' . $order->status
+                ], 400);
+            }
+
+            // Determine redirect mode based on payment method
+            $paymentMethod = $request->input('payment_method', 'CARD');
+            $redirectMode = $this->getRedirectModeForPaymentMethod($paymentMethod);
+
+            // Prepare payment data for Pesapal
+            $paymentData = [
+                'id' => $order->order_reference,
+                'currency' => $order->currency,
+                'amount' => (float)$order->total_amount,
+                'description' => "Payment for Order #{$order->order_reference}",
+                'callback_url' => config('pesapal.callback_url'),
+                'billing_address' => [
+                    'email_address' => $order->email,
+                    'phone_number' => $order->phone,
+                    'first_name' => explode(' ', $order->full_name)[0] ?? '',
+                    'last_name' => explode(' ', $order->full_name, 2)[1] ?? '',
+                ]
+            ];
+
+            // Add payment method if stored in order
+            if ($order->payment_method) {
+                $paymentData['payment_method'] = $order->payment_method;
+            }
+
+            Log::info('Submitting order to PesaPal', [
+                'order_id' => $order->id,
+                'amount' => $order->total_amount,
+                'currency' => $order->currency,
+                'payment_method' => $paymentMethod,
+                'redirect_mode' => $redirectMode
+            ]);
+
+            // Call Pesapal service to get payment URL
+            $paymentResponse = $this->pesapalService->submitOrderRequest($paymentData);
+
+            if (!$paymentResponse['success']) {
+                Log::error('Failed to get payment URL from Pesapal', $paymentResponse);
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Failed to initiate payment',
+                    'error' => $paymentResponse['error'] ?? 'Payment service error'
+                ], 500);
+            }
+
+            // Update order with payment reference
+            $order->update([
+                'payment_reference' => $paymentResponse['order_tracking_id'],
+                'payment_method' => $paymentMethod
+            ]);
+
+            Log::info('Payment initiated successfully', [
+                'order_id' => $order->id,
+                'order_tracking_id' => $paymentResponse['order_tracking_id'],
+                'payment_method' => $paymentMethod
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Payment initiated successfully',
+                'data' => [
+                    'payment_url' => $paymentResponse['redirect_url'],
+                    'order_tracking_id' => $paymentResponse['order_tracking_id'],
+                    'payment_method' => $paymentMethod
+                ]
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error initiating payment: ' . $e->getMessage(), [
+                'exception' => $e
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to initiate payment',
+                'error' => config('app.debug') ? $e->getMessage() : 'Server error'
+            ], 500);
+        }
+    }
+
+    /**
+     * Map payment method to Pesapal redirect mode
+     */
+    protected function getRedirectModeForPaymentMethod(string $paymentMethod): string
+    {
+        $redirectModes = [
+            'MPESA' => 'MPESA',
+            'CARD' => 'CARD',
+            'BANK_TRANSFER' => 'BANK_TRANSFER',
+            'AIRTEL' => 'AIRTEL',
+            'EQUITY' => 'EQUITY'
+        ];
+
+        return $redirectModes[$paymentMethod] ?? 'DEFAULT';
     }
 
     /**
      * Create order from checkout
      */
-    public function store(Request $request)
+    public function store(Request $request): JsonResponse
     {
         try {
             $validator = Validator::make($request->all(), [
@@ -38,6 +182,7 @@ class OrderController extends Controller
                 'items.*.product_id' => 'required|exists:products,id',
                 'items.*.quantity' => 'required|integer|min:1',
                 'items.*.unit_price' => 'required|numeric|min:0',
+                'items.*.subscription_tier' => 'nullable|string|in:free,basic,premium',
                 'total_amount' => 'required|numeric|min:0',
                 'currency' => 'required|string|in:KES,USD'
             ]);
@@ -54,7 +199,7 @@ class OrderController extends Controller
 
             try {
                 // Generate unique order reference
-                $orderReference = $this->generateOrderReference();
+                $orderReference = Order::generateReference();
 
                 // Create order
                 $order = Order::create([
@@ -68,9 +213,10 @@ class OrderController extends Controller
                     'total_amount' => $request->total_amount,
                     'currency' => $request->currency ?? 'KES',
                     'status' => 'pending',
+                    'payment_method' => $request->payment_method ?? null,
                 ]);
 
-                // Create order items
+                // Create order items with subscription tier
                 foreach ($request->items as $item) {
                     OrderItem::create([
                         'order_id' => $order->id,
@@ -78,6 +224,7 @@ class OrderController extends Controller
                         'quantity' => $item['quantity'],
                         'unit_price' => $item['unit_price'],
                         'line_total' => $item['quantity'] * $item['unit_price'],
+                        'subscription_tier' => $item['subscription_tier'] ?? null,
                     ]);
                 }
 
@@ -89,6 +236,13 @@ class OrderController extends Controller
                 // Load order with items and products for response
                 $order->load(['items.product.category', 'user']);
 
+                Log::info('Order created successfully', [
+                    'order_id' => $order->id,
+                    'order_reference' => $order->order_reference,
+                    'user_id' => Auth::id(),
+                    'items_count' => count($request->items)
+                ]);
+
                 return response()->json([
                     'success' => true,
                     'message' => 'Order created successfully',
@@ -98,6 +252,7 @@ class OrderController extends Controller
                 ], 201);
             } catch (\Exception $e) {
                 DB::rollback();
+                Log::error('Error creating order items: ' . $e->getMessage());
                 throw $e;
             }
         } catch (\Exception $e) {
@@ -112,7 +267,7 @@ class OrderController extends Controller
     /**
      * Get user's orders
      */
-    public function index(Request $request)
+    public function index(Request $request): JsonResponse
     {
         try {
             $perPage = $request->get('per_page', 15);
@@ -134,6 +289,7 @@ class OrderController extends Controller
                 'data' => $orders
             ]);
         } catch (\Exception $e) {
+            Log::error('Error retrieving orders: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to retrieve orders',
@@ -145,7 +301,7 @@ class OrderController extends Controller
     /**
      * Get single order
      */
-    public function show($id)
+    public function show($id): JsonResponse
     {
         try {
             $order = Order::where('user_id', Auth::id())
@@ -160,6 +316,7 @@ class OrderController extends Controller
                 ]
             ]);
         } catch (\Exception $e) {
+            Log::error('Error retrieving order: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
                 'message' => 'Order not found',
@@ -169,81 +326,159 @@ class OrderController extends Controller
     }
 
     /**
-     * Initiate payment for order
+     * Get order by order reference
      */
-    public function initiatePayment($id)
+    public function getByReference($reference): JsonResponse
     {
         try {
-            $order = Order::where('user_id', Auth::id())
-                ->findOrFail($id);
+            $order = Order::where('order_reference', $reference)
+                ->with(['items.product.category', 'user'])
+                ->firstOrFail();
 
-            // Check if order is in correct status
-            if ($order->status !== 'pending') {
+            // Check if user owns the order
+            if ($order->user_id !== Auth::id()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Order cannot be paid. Invalid status: ' . $order->status
-                ], 400);
+                    'message' => 'Unauthorized'
+                ], 403);
             }
-
-            // Prepare payment data for Pesapal
-            $paymentData = [
-                'id' => $order->order_reference,
-                'currency' => $order->currency,
-                'amount' => $order->total_amount,
-                'description' => "Payment for Order #{$order->order_reference}",
-                'callback_url' => config('app.url') . '/api/pesapal/confirm',
-                'redirect_mode' => 'PARENT_WINDOW',
-                'notification_id' => config('pesapal.notification_id'),
-                'billing_address' => [
-                    'email_address' => $order->email,
-                    'phone_number' => $order->phone,
-                    'first_name' => explode(' ', $order->full_name)[0] ?? '',
-                    'last_name' => explode(' ', $order->full_name, 2)[1] ?? '',
-                ]
-            ];
-
-            // Call Pesapal service to get payment URL
-            $paymentResponse = $this->pesapalService->submitOrderRequest($paymentData);
-
-            if (!$paymentResponse['success']) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Failed to initiate payment',
-                    'error' => $paymentResponse['error'] ?? 'Payment service error'
-                ], 500);
-            }
-
-            // Update order with payment reference
-            $order->update([
-                'payment_reference' => $paymentResponse['order_tracking_id']
-            ]);
 
             return response()->json([
                 'success' => true,
-                'message' => 'Payment initiated successfully',
-                'data' => [
-                    'payment_url' => $paymentResponse['redirect_url'],
-                    'order_tracking_id' => $paymentResponse['order_tracking_id']
-                ]
+                'message' => 'Order retrieved successfully',
+                'data' => ['order' => $order]
             ]);
         } catch (\Exception $e) {
+            Log::error('Error retrieving order by reference: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to initiate payment',
-                'error' => config('app.debug') ? $e->getMessage() : 'Server error'
-            ], 500);
+                'message' => 'Order not found'
+            ], 404);
         }
     }
 
     /**
-     * Generate unique order reference
+     * Create subscriptions from a paid order
+     * This is called by PesapalCallbackController after payment confirmation
+     * 
+     * IMPORTANT: This method is PUBLIC so it can be called from PesapalCallbackController
      */
-    private function generateOrderReference(): string
+    public function createSubscriptionsFromOrder(Order $order): void
     {
-        do {
-            $reference = 'ORD-' . strtoupper(Str::random(8)) . '-' . time();
-        } while (Order::where('order_reference', $reference)->exists());
+        try {
+            // Load order items with products and their subscription tiers
+            $order->load('items.product');
 
-        return $reference;
+            Log::info('Creating subscriptions from order', [
+                'order_id' => $order->id,
+                'order_reference' => $order->order_reference,
+                'items_count' => $order->items->count()
+            ]);
+
+            foreach ($order->items as $item) {
+                $product = $item->product;
+
+                Log::info('Processing order item', [
+                    'order_item_id' => $item->id,
+                    'product_id' => $product->id,
+                    'product_title' => $product->title,
+                    'is_subscription' => $product->is_subscription,
+                    'subscription_tier' => $item->subscription_tier
+                ]);
+
+                // Skip if not a subscription product
+                if (!$product->is_subscription) {
+                    Log::info('Product is not a subscription, skipping', [
+                        'product_id' => $product->id,
+                        'product_title' => $product->title
+                    ]);
+                    continue;
+                }
+
+                // Check if user already has active subscription to this product
+                $existingSubscription = \App\Models\Subscription::where('user_id', $order->user_id)
+                    ->where('product_id', $product->id)
+                    ->where('status', 'active')
+                    ->first();
+
+                if ($existingSubscription) {
+                    Log::info('User already has active subscription, skipping', [
+                        'subscription_id' => $existingSubscription->id,
+                        'product_id' => $product->id,
+                        'user_id' => $order->user_id
+                    ]);
+                    continue;
+                }
+
+                // Use selected tier from order item or default to basic
+                $tier = $item->subscription_tier ?? 'basic';
+                
+                // Get tier price from product
+                $tierPrice = $product->getTierPrice($tier);
+
+                if ($tierPrice === null) {
+                    Log::warning('Tier price not found for product', [
+                        'product_id' => $product->id,
+                        'tier' => $tier,
+                        'available_tiers' => $product->subscription_tiers
+                    ]);
+                    continue;
+                }
+
+                Log::info('Creating subscription', [
+                    'user_id' => $order->user_id,
+                    'product_id' => $product->id,
+                    'tier' => $tier,
+                    'price' => $tierPrice
+                ]);
+
+                // Create subscription
+                $subscription = \App\Models\Subscription::create([
+                    'user_id' => $order->user_id,
+                    'product_id' => $product->id,
+                    'tier' => $tier,
+                    'status' => 'active',
+                    'price' => $tierPrice,
+                    'currency' => $order->currency,
+                    'subscription_reference' => \App\Models\Subscription::generateReference(),
+                    'payment_reference' => $order->payment_reference,
+                    'started_at' => now(),
+                    'next_billing_date' => now()->addMonth()
+                ]);
+
+                // Send subscription confirmation email
+                try {
+                    $this->subscriptionService->sendSubscriptionCreatedEmail($subscription);
+                    Log::info('Subscription confirmation email sent', [
+                        'subscription_id' => $subscription->id
+                    ]);
+                } catch (\Exception $e) {
+                    Log::error('Failed to send subscription email: ' . $e->getMessage());
+                }
+
+                Log::info('✅ Subscription created successfully from order', [
+                    'subscription_id' => $subscription->id,
+                    'subscription_reference' => $subscription->subscription_reference,
+                    'order_id' => $order->id,
+                    'product_id' => $product->id,
+                    'product_title' => $product->title,
+                    'tier' => $tier,
+                    'price' => $tierPrice,
+                    'user_id' => $order->user_id,
+                    'next_billing_date' => $subscription->next_billing_date->format('Y-m-d')
+                ]);
+            }
+
+            Log::info('Finished creating subscriptions from order', [
+                'order_id' => $order->id
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('❌ Error creating subscriptions from order: ' . $e->getMessage(), [
+                'order_id' => $order->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+        }
     }
 }

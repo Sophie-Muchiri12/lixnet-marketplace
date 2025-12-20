@@ -1,4 +1,4 @@
-import { useState, useEffect, use } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AlertCircle } from 'lucide-react';
@@ -22,6 +22,7 @@ interface Product {
         name: string;
         slug: string;
     };
+    is_subscription?: boolean;
 }
 
 interface ApiResponse {
@@ -121,18 +122,14 @@ export default function Marketplace() {
     };
 
     const handleLoginClick = () => {
-        // log out user from previous session if available or redirect to login
         user ? logout() : router.visit('/login');
     };
 
     const handleAddToCart = (product: Product) => {
-        // You can add any additional logic here like showing a toast notification
         toast.success(`Added to cart: ${product.title}`);
     };
 
     const renderProductGrid = () => {
-
-        // sort products by id
         const sortedProducts = filteredProducts.sort((a, b) => a.id - b.id);
 
         if (isLoading) {

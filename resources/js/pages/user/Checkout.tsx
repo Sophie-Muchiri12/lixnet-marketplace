@@ -11,14 +11,12 @@ import {
     User,
     CreditCard,
     Lock,
-    CheckCircle,
     Briefcase,
     PiggyBank,
     GraduationCap,
     Calculator,
     Truck,
-    ArrowLeft,
-    Shield
+    ArrowLeft
 } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useCart } from '@/context/cart-context';
@@ -37,6 +35,27 @@ interface CheckoutFormData {
     notes: string;
 }
 
+interface SubscriptionTier {
+    price: number;
+    features: string;
+}
+
+interface CartItemWithTier {
+    id: number | string;
+    product: {
+        id: number;
+        title: string;
+        price: number;
+        category: {
+            name: string;
+        };
+        is_subscription?: boolean;
+        subscription_tiers?: Record<string, SubscriptionTier> | null;
+    };
+    quantity: number;
+    subscription_tier?: string;
+}
+
 export default function Checkout() {
     const { state } = useCart();
     const { user, isLoading, checkAuth, logout } = useAuth();
@@ -51,12 +70,10 @@ export default function Checkout() {
     const [formErrors, setFormErrors] = useState<Partial<CheckoutFormData>>({});
 
     useEffect(() => {
-        // Check authentication on mount
         checkAuth();
     }, []);
 
     useEffect(() => {
-        // Redirect if not authenticated and not loading
         if (!isLoading && !user) {
             toast.error("Please log in to access checkout");
             const redirectPath = encodeURIComponent("/checkout");
@@ -64,7 +81,6 @@ export default function Checkout() {
             return;
         }
 
-        // Prefill form with user data when available
         if (user) {
             setFormData(prev => ({
                 ...prev,
@@ -76,7 +92,6 @@ export default function Checkout() {
         }
     }, [user, isLoading]);
 
-    // Redirect to cart if empty
     useEffect(() => {
         if (state.items.length === 0) {
             toast.error("Your cart is empty");
@@ -87,6 +102,15 @@ export default function Checkout() {
     const formatPrice = (price: number) => {
         return `KSh ${price.toLocaleString()}`;
     };
+
+    // Helper function to get tier-based price
+    function getItemPrice(item: CartItemWithTier): number {
+        if (item.subscription_tier && item.product.is_subscription && item.product.subscription_tiers) {
+            const tierData = item.product.subscription_tiers[item.subscription_tier];
+            return tierData ? tierData.price : item.product.price;
+        }
+        return item.product.price;
+    }
 
     function getProductIcon(categoryName: string) {
         const iconMap: { [key: string]: JSX.Element } = {
@@ -128,7 +152,6 @@ export default function Checkout() {
 
     const handleInputChange = (field: keyof CheckoutFormData, value: string) => {
         setFormData(prev => ({ ...prev, [field]: value }));
-        // Clear error for this field
         if (formErrors[field]) {
             setFormErrors(prev => ({ ...prev, [field]: undefined }));
         }
@@ -140,30 +163,39 @@ export default function Checkout() {
 
     const handlePlaceOrder = async () => {
         if (!validateForm()) {
-            toast.error("Please fix the form errors");
             return;
         }
 
         setIsProcessing(true);
 
         try {
-            // Prepare order data
+            // Create order with tier-based pricing
             const orderData = {
                 full_name: formData.fullName,
                 email: formData.email,
                 phone: formData.phone,
                 company: formData.company,
                 notes: formData.notes,
-                items: state.items.map(item => ({
-                    product_id: item.product.id,
-                    quantity: item.quantity,
-                    unit_price: item.product.price
-                })),
+                items: state.items.map((item: CartItemWithTier) => {
+                    // Get tier-specific price
+                    let unitPrice = item.product.price;
+                    
+                    if (item.subscription_tier && item.product.is_subscription && item.product.subscription_tiers) {
+                        const tierData = item.product.subscription_tiers[item.subscription_tier];
+                        unitPrice = tierData ? tierData.price : item.product.price;
+                    }
+                    
+                    return {
+                        product_id: item.product.id,
+                        quantity: item.quantity,
+                        unit_price: unitPrice,
+                        subscription_tier: item.subscription_tier || null
+                    };
+                }),
                 total_amount: state.totalValue,
                 currency: 'KES'
             };
 
-            // Create order
             const orderResponse = await axios.post('/api/orders', orderData);
 
             if (!orderResponse.data.success) {
@@ -183,15 +215,12 @@ export default function Checkout() {
             const { payment_url } = paymentResponse.data.data;
 
             toast.success("Redirecting to payment...");
-
-            // Redirect to Pesapal payment page
             window.location.href = payment_url;
 
         } catch (error: any) {
             console.error('Checkout error:', error);
 
             if (error.response?.status === 422) {
-                // Validation errors
                 const validationErrors = error.response.data.errors;
                 if (validationErrors) {
                     Object.keys(validationErrors).forEach(field => {
@@ -209,16 +238,13 @@ export default function Checkout() {
     };
 
     const handleLoginClick = () => {
-        // log out user from previous session if available or redirect to login
         user ? logout() : router.visit('/login');
     };
 
     const handleCartClick = () => {
-        // navigate to cart
         router.visit('/cart');
     };
 
-    // Show loading state
     if (isLoading) {
         return (
             <MarketplaceLayout>
@@ -240,17 +266,15 @@ export default function Checkout() {
             onCartClick={handleCartClick}
         >
             <div className="max-w-6xl mx-auto px-4 py-8">
-                {/* Breadcrumbs */}
                 <div className="mb-4">
                     <Breadcrumbs
                         items={[
-                            // { label: 'Home', href: '/' },
                             { label: 'Cart', href: '/cart' },
                             { label: 'Checkout' }
                         ]}
                     />
                 </div>
-                {/* Header */}
+
                 <div className="mb-8">
                     <Button
                         variant="ghost"
@@ -267,7 +291,6 @@ export default function Checkout() {
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                    {/* Checkout Form */}
                     <div className="space-y-6">
                         {/* Customer Information */}
                         <Card className="bg-card-color text-text-dark border border-border-color">
@@ -352,34 +375,19 @@ export default function Checkout() {
                             </CardContent>
                         </Card>
 
-                        {/* Payment Method */}
+                        {/* Payment Information */}
                         <Card className="bg-card-color text-text-dark border border-border-color">
                             <CardHeader>
                                 <CardTitle className="flex items-center">
                                     <CreditCard className="w-5 h-5 mr-2 text-brand-blue" />
-                                    Payment Method
+                                    Payment
                                 </CardTitle>
                             </CardHeader>
-                            <CardContent>
-                                <div className="flex items-center justify-between p-4 border border-border-color rounded-lg bg-gradient-to-r from-green-50 to-green-100">
-                                    <div className="flex items-center space-x-3">
-                                        <div className="w-12 h-12 bg-green-600 rounded-lg flex items-center justify-center">
-                                            <Shield className="w-6 h-6 text-white" />
-                                        </div>
-                                        <div>
-                                            <h3 className="font-semibold text-green-900">Secure Payment with PesaPal</h3>
-                                            <p className="text-sm text-green-700">
-                                                Pay securely using M-Pesa, Credit Card, or Bank Transfer
-                                            </p>
-                                        </div>
-                                    </div>
-                                    <CheckCircle className="w-6 h-6 text-green-600" />
-                                </div>
-
-                                <Alert className="mt-4 bg-blue-50 border-blue-200">
+                            <CardContent className="space-y-4">
+                                <Alert className="bg-blue-50 border-blue-200">
                                     <Lock className="h-4 w-4 text-blue-600" />
-                                    <AlertDescription className="text-blue-800">
-                                        Your payment information is encrypted and secure. You'll be redirected to PesaPal to complete payment.
+                                    <AlertDescription className="text-blue-800 text-sm">
+                                        You will be redirected to Pesapal's secure payment gateway where you can choose from multiple payment methods including M-Pesa, Card, Bank Transfer, and more.
                                     </AlertDescription>
                                 </Alert>
                             </CardContent>
@@ -388,13 +396,12 @@ export default function Checkout() {
 
                     {/* Order Summary */}
                     <div className="space-y-6">
-                        {/* Order Items */}
                         <Card className="bg-card-color text-text-dark border border-border-color">
                             <CardHeader>
                                 <CardTitle>Order Summary</CardTitle>
                             </CardHeader>
                             <CardContent className="space-y-4">
-                                {state.items.map((item, index) => (
+                                {state.items.map((item: CartItemWithTier, index) => (
                                     <div key={item.id}>
                                         {index > 0 && <Separator className="my-4 bg-border-color" />}
 
@@ -408,16 +415,31 @@ export default function Checkout() {
                                                     {item.product.title}
                                                 </h4>
                                                 <p className="text-sm text-gray-500">
-                                                    Qty: {item.quantity} × {formatPrice(item.product.price)}
+                                                    Qty: {item.quantity}
                                                 </p>
                                                 <Badge variant="secondary" className="text-xs bg-background-color text-text-dark border border-border-color mt-1">
                                                     {item.product.category.name}
                                                 </Badge>
+
+                                                {/* Display Subscription Tier */}
+                                                {item.subscription_tier && (
+                                                    <div className="mt-2 space-y-1">
+                                                        <Badge className="text-xs bg-green-100 text-green-800 border-green-300 font-semibold">
+                                                            Plan: {item.subscription_tier.charAt(0).toUpperCase() + item.subscription_tier.slice(1)}
+                                                        </Badge>
+                                                        <p className="text-xs text-gray-500">
+                                                            Monthly subscription
+                                                        </p>
+                                                    </div>
+                                                )}
                                             </div>
 
                                             <div className="text-right">
                                                 <div className="font-semibold text-dark-blue">
-                                                    {formatPrice(item.product.price * item.quantity)}
+                                                    {formatPrice(getItemPrice(item))}
+                                                    {item.subscription_tier && (
+                                                        <div className="text-xs text-gray-500 font-normal">/month</div>
+                                                    )}
                                                 </div>
                                             </div>
                                         </div>
@@ -426,7 +448,6 @@ export default function Checkout() {
 
                                 <Separator className="bg-border-color" />
 
-                                {/* Totals */}
                                 <div className="space-y-2">
                                     <div className="flex justify-between text-sm">
                                         <span>Subtotal ({state.totalItems} items):</span>
@@ -448,11 +469,10 @@ export default function Checkout() {
 
                                 <Alert className="bg-blue-50 border-blue-200">
                                     <AlertDescription className="text-sm text-blue-800">
-                                        <strong>One Time Payment:</strong> You'll be redirected to PesaPal to complete payment.
+                                        <strong>One Time Payment:</strong> Proceed to pay securely through Pesapal.
                                     </AlertDescription>
                                 </Alert>
 
-                                {/* Place Order Button */}
                                 <Button
                                     onClick={handlePlaceOrder}
                                     disabled={isProcessing}

@@ -114,6 +114,17 @@ export function MarketplaceHeader({
 
                     {/* Header Actions */}
                     <div className="flex items-center gap-4">
+                        {/* Admin Tab - Only visible to admin users */}
+                        {isAuthenticated && user?.role === 'admin' && (
+                            <Button
+                                variant="ghost"
+                                onClick={() => window.location.href = '/dashboard'}
+                                className="text-blue-100 hover:text-card-color hover:bg-[#0052a3] text-sm font-medium"
+                            >
+                                Admin
+                            </Button>
+                        )}
+
                         {/* Language */}
                         <div className="flex items-center text-sm text-blue-100 hover:text-card-color cursor-pointer">
                             <Globe className="w-4 h-4 mr-1" />
@@ -139,6 +150,9 @@ export function MarketplaceHeader({
                                         </a>
                                         <a href="/orders" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                                             Orders
+                                        </a>
+                                        <a href="/my-subscriptions" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                            Subscriptions
                                         </a>
                                         <button
                                             onClick={handleSignOut}
@@ -168,9 +182,9 @@ export function MarketplaceHeader({
                             <ShoppingCart className="w-4 h-4 mr-1" />
                             <span>Cart</span>
                             {cartState.totalItems > 0 && (
-                                <Badge className="absolute -top-2 -right-2 bg-red-500 text-card-color text-xs px-1.5 py-0.5 rounded-full min-w-[20px] h-5 flex items-center justify-center">
+                                <div className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center border border-white">
                                     {cartState.totalItems}
-                                </Badge>
+                                </div>
                             )}
                         </Button>
                     </div>
