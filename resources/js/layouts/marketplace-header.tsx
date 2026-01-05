@@ -151,8 +151,8 @@ export function MarketplaceHeader({
                                         <a href="/orders" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                                             Orders
                                         </a>
-                                        <a href="/my-subscriptions" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                                            Subscriptions
+                                        <a href="/billing" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                            Billing
                                         </a>
                                         <button
                                             onClick={handleSignOut}
