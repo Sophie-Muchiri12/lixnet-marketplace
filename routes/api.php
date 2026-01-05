@@ -177,6 +177,15 @@ Route::middleware(['web', 'auth', 'customer'])->group(function () {
             ->withoutMiddleware('App\Http\Middleware\VerifyCsrfToken');
     });
 
+     // Billing management - Authenticated customers
+    Route::prefix('billing')->group(function () {
+        Route::get('/history', [\App\Http\Controllers\BillingController::class, 'getBillingHistory'])->name('billing.history');
+        Route::get('/summary', [\App\Http\Controllers\BillingController::class, 'getBillingSummary'])->name('billing.summary');
+        Route::get('/invoice/{id}', [\App\Http\Controllers\BillingController::class, 'getInvoiceDetails'])->name('billing.invoice-details');
+        Route::get('/invoice/{id}/download', [\App\Http\Controllers\BillingController::class, 'downloadInvoice'])->name('billing.download-invoice');
+        Route::get('/export', [\App\Http\Controllers\BillingController::class, 'exportBillingHistory'])->name('billing.export');
+    });
+
 });
 
 /*

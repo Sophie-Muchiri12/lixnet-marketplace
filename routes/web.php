@@ -198,6 +198,14 @@ Route::middleware(['auth', 'verified', 'admin'])->prefix('admin')->name('admin.'
 });
 
 
+     Route::get('/billing', function () {
+        $categories = App\Models\Category::all();
+        return Inertia::render('billing-history-page', [
+            'categories' => $categories,
+        ]);
+    })->name('billing.index');
+
+
 
 require __DIR__.'/settings.php';
 require __DIR__.'/auth.php';

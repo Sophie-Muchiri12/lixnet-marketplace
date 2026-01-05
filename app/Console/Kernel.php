@@ -22,9 +22,15 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule): void
     {
-        // Send subscription reminders daily at 8 AM Nairobi time
+        // Send subscription reminders at 8 AM Nairobi time
         $schedule->command('subscriptions:send-reminders')
             ->dailyAt('08:00')
+            ->timezone('Africa/Nairobi')
+            ->onOneServer();
+
+        // Send subscription reminders at 12:05 PM Nairobi time
+        $schedule->command('subscriptions:send-reminders')
+            ->dailyAt('12:05')
             ->timezone('Africa/Nairobi')
             ->onOneServer();
 
