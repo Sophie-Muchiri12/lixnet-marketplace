@@ -3,124 +3,186 @@
 <html>
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
         body { 
-            font-family: Arial, sans-serif; 
-            color: #333; 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            color: #333333; 
             margin: 0;
             padding: 0;
+            background-color: #f5f5f5;
         }
         .container { 
             max-width: 600px; 
             margin: 0 auto; 
             padding: 20px; 
         }
+        .email-wrapper {
+            background-color: #ffffff;
+            border-radius: 6px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
         .header { 
-            background-color: #4CAF50; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white; 
-            padding: 20px; 
+            padding: 40px 20px; 
             text-align: center; 
-            border-radius: 5px 5px 0 0; 
+            border-radius: 6px 6px 0 0; 
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: 600;
         }
         .content { 
-            background-color: #f9f9f9; 
-            padding: 20px; 
-            border: 1px solid #ddd; 
-            border-radius: 0 0 5px 5px; 
+            padding: 40px; 
+            line-height: 1.6;
         }
-        .details { 
-            background-color: white; 
-            padding: 15px; 
-            margin: 15px 0; 
-            border-left: 4px solid #4CAF50; 
+        .greeting {
+            font-size: 16px;
+            margin-bottom: 20px;
+        }
+        .main-text {
+            font-size: 15px;
+            margin-bottom: 30px;
+            color: #333333;
+        }
+        .details-section {
+            margin: 30px 0;
+            padding: 20px;
+            background-color: #f9fafb;
+            border-left: 4px solid #667eea;
+            border-radius: 4px;
         }
         .detail-row { 
             display: flex; 
             justify-content: space-between; 
-            padding: 8px 0; 
-            border-bottom: 1px solid #eee; 
+            padding: 12px 0; 
+            font-size: 14px;
+            border-bottom: 1px solid #e5e7eb;
         }
         .detail-row:last-child {
             border-bottom: none;
         }
-        .label { 
-            font-weight: bold; 
-            color: #555; 
+        .detail-label { 
+            font-weight: 600; 
+            color: #555555; 
+            width: 40%;
         }
-        .value { 
-            color: #333; 
+        .detail-value { 
+            color: #333333; 
+            text-align: right;
+            word-break: break-word;
+        }
+        .section-title {
+            font-size: 15px;
+            font-weight: 600;
+            color: #333333;
+            margin-top: 25px;
+            margin-bottom: 12px;
+        }
+        .feature-list {
+            margin-bottom: 30px;
+        }
+        .feature-list li {
+            font-size: 14px;
+            margin-bottom: 10px;
+            color: #555555;
+            line-height: 1.5;
+        }
+        .cta-button {
+            display: inline-block;
+            padding: 12px 32px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            font-weight: 600;
+            font-size: 14px;
+            margin: 20px 0 30px 0;
+        }
+        .cta-button:hover {
+            opacity: 0.9;
         }
         .footer { 
             text-align: center; 
-            padding-top: 20px; 
-            color: #999; 
+            padding: 30px 40px 20px;
+            border-top: 1px solid #e5e7eb;
             font-size: 12px; 
+            color: #888888;
+            background-color: #fafafa;
+            border-radius: 0 0 6px 6px;
         }
-        .button { 
-            display: inline-block; 
-            padding: 12px 30px; 
-            background-color: #4CAF50; 
-            color: white; 
-            text-decoration: none; 
-            border-radius: 5px; 
-            margin: 15px 0; 
+        .footer-text {
+            margin: 5px 0;
         }
-        h1 { margin: 0; }
-        p { line-height: 1.6; }
-        ul { line-height: 1.8; }
+        .divider {
+            height: 1px;
+            background-color: #e5e7eb;
+            margin: 20px 0;
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="header">
-            <h1>✓ Subscription Activated</h1>
-        </div>
-        <div class="content">
-            <p>Hi {{ $user->name }},</p>
-            
-            <p>Your subscription has been successfully activated!</p>
-
-            <div class="details">
-                <div class="detail-row">
-                    <span class="label">Product:</span>
-                    <span class="value">{{ $product->title }}</span>
-                </div>
-                <div class="detail-row">
-                    <span class="label">Tier:</span>
-                    <span class="value">{{ ucfirst($subscription->tier) }}</span>
-                </div>
-                <div class="detail-row">
-                    <span class="label">Monthly Price:</span>
-                    <span class="value">{{ $tierPrice }}</span>
-                </div>
-                <div class="detail-row">
-                    <span class="label">Subscription Reference:</span>
-                    <span class="value">{{ $subscription->subscription_reference }}</span>
-                </div>
-                <div class="detail-row">
-                    <span class="label">Started Date:</span>
-                    <span class="value">{{ $subscription->started_at->format('M d, Y') }}</span>
-                </div>
-                <div class="detail-row">
-                    <span class="label">Next Billing Date:</span>
-                    <span class="value">{{ $nextBillingDate }}</span>
-                </div>
+        <div class="email-wrapper">
+            <div class="header">
+                <h1>Subscription Confirmed</h1>
             </div>
+            <div class="content">
+                <p class="greeting">Hi {{ $user->name }},</p>
+                
+                <p class="main-text">
+                    Thank you for subscribing! Your subscription to <strong>{{ $product->title }}</strong> is now active and ready to use.
+                </p>
 
-            <p><strong>What's next?</strong></p>
-            <ul>
-                <li>Your subscription is now active and you have access to all {{ ucfirst($subscription->tier) }} tier features</li>
-                <li>You will receive a renewal reminder 7 days and 3 days before your next billing date</li>
-                <li>You can cancel your subscription anytime from your account dashboard</li>
-            </ul>
+                <div class="details-section">
+                    <div class="detail-row">
+                        <span class="detail-label">Product</span>
+                        <span class="detail-value">{{ $product->title }}</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Plan</span>
+                        <span class="detail-value">{{ ucfirst($subscription->tier) }}</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Monthly Rate</span>
+                        <span class="detail-value">{{ $tierPrice }}</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Reference Number</span>
+                        <span class="detail-value">{{ $subscription->subscription_reference }}</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Activation Date</span>
+                        <span class="detail-value">{{ $subscription->started_at->format('M d, Y') }}</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Next Billing Date</span>
+                        <span class="detail-value">{{ $nextBillingDate }}</span>
+                    </div>
+                </div>
 
-            <p>If you have any questions, feel free to contact our support team.</p>
+                <p class="section-title">What Happens Next</p>
+                <ul class="feature-list">
+                    <li>Your {{ ucfirst($subscription->tier) }} plan is now active and you have full access to all features</li>
+                    <li>You'll receive renewal reminders 7 and 3 days before your next billing date</li>
+                    <li>You can manage or cancel your subscription anytime from your account dashboard</li>
+                </ul>
 
-            <p>Best regards,<br>The Team</p>
+                <p class="section-title">Need Help?</p>
+                <p class="main-text">
+                    If you have any questions about your subscription or need assistance, please don't hesitate to reach out to our support team. We're here to help!
+                </p>
 
+                <p style="margin-top: 30px; color: #555555;">
+                    Best regards,<br>
+                    <strong>The Lixnet Marketplace Team</strong>
+                </p>
+            </div>
             <div class="footer">
-                <p>This is an automated email. Please do not reply directly to this email.</p>
-                <p>&copy; {{ date('Y') }}. All rights reserved.</p>
+                <p class="footer-text">This is an automated email. Please do not reply directly to this email.</p>
+                <p class="footer-text">&copy; {{ date('Y') }} Lixnet Marketplace. All rights reserved.</p>
             </div>
         </div>
     </div>

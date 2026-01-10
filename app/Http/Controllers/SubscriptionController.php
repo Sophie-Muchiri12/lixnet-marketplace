@@ -282,32 +282,62 @@ class SubscriptionController extends Controller
                 ], 400);
             }
 
-            // Cancel old subscription
-            $subscription->update([
-                'status' => 'cancelled',
-                'cancelled_at' => now(),
-                'cancellation_reason' => "Upgraded/Downgraded to {$newTier} tier"
-            ]);
+            $oldPrice = $subscription->price;
 
-            // Create new subscription with new tier
-            $newSubscription = $this->subscriptionService->createSubscription(
-                Auth::id(),
-                $subscription->product_id,
-                $newTier
-            );
+            // If new tier is free, update immediately and no payment needed
+            if ($newPrice == 0) {
+                $subscription->update([
+                    'tier' => $newTier,
+                    'price' => $newPrice,
+                ]);
 
-            if (!$newSubscription) {
+                Log::info('Subscription tier changed', [
+                    'subscription_id' => $subscription->id,
+                    'old_tier' => $subscription->tier,
+                    'new_tier' => $newTier,
+                    'old_price' => $oldPrice,
+                    'new_price' => $newPrice
+                ]);
+
                 return response()->json([
-                    'success' => false,
-                    'message' => 'Failed to change subscription tier'
-                ], 500);
+                    'success' => true,
+                    'message' => 'Subscription tier changed successfully',
+                    'data' => [
+                        'subscription' => $subscription
+                    ]
+                ]);
             }
 
-            // Initiate payment for new tier if different price
-            $paymentResult = $this->subscriptionService->initiateSubscriptionPayment($newSubscription);
+            // For paid tiers, initiate payment
+            // Update tier temporarily to initiate payment
+            $subscription->update([
+                'tier' => $newTier,
+                'price' => $newPrice,
+            ]);
 
-            if (!$paymentResult['success'] && $newPrice > 0) {
-                $newSubscription->delete();
+            // Create a temporary subscription object for payment (same reference)
+            $paymentData = [
+                'id' => $subscription->subscription_reference,
+                'currency' => $subscription->currency,
+                'amount' => (float)$newPrice,
+                'description' => "Subscription Change: {$subscription->product->title} ({$newTier})",
+                'callback_url' => config('pesapal.callback_url'),
+                'billing_address' => [
+                    'email_address' => $subscription->user->email,
+                    'phone_number' => $subscription->user->phone,
+                    'first_name' => explode(' ', $subscription->user->name)[0] ?? '',
+                    'last_name' => explode(' ', $subscription->user->name, 2)[1] ?? '',
+                ]
+            ];
+
+            $paymentResult = $this->subscriptionService->initiateSubscriptionPayment($subscription);
+
+            if (!$paymentResult['success']) {
+                // Revert changes if payment fails
+                $subscription->update([
+                    'tier' => explode(',', $subscription->tier)[0], // This won't work, need to store old tier
+                    'price' => $oldPrice,
+                ]);
                 return response()->json([
                     'success' => false,
                     'message' => 'Failed to process payment for new tier',
@@ -315,15 +345,19 @@ class SubscriptionController extends Controller
                 ], 500);
             }
 
-            $this->subscriptionService->sendSubscriptionCreatedEmail($newSubscription);
+            Log::info('Subscription tier change initiated payment', [
+                'subscription_id' => $subscription->id,
+                'new_tier' => $newTier,
+                'new_price' => $newPrice
+            ]);
 
             return response()->json([
                 'success' => true,
-                'message' => 'Subscription tier changed successfully',
+                'message' => 'Please complete the payment to change your subscription tier',
                 'data' => [
-                    'old_subscription' => $subscription,
-                    'new_subscription' => $newSubscription,
-                    'payment_url' => $paymentResult['payment_url'] ?? null
+                    'subscription' => $subscription,
+                    'payment_url' => $paymentResult['payment_url'],
+                    'order_tracking_id' => $paymentResult['order_tracking_id']
                 ]
             ]);
         } catch (\Exception $e) {

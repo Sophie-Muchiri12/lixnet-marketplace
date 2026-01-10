@@ -28,12 +28,6 @@ class Kernel extends ConsoleKernel
             ->timezone('Africa/Nairobi')
             ->onOneServer();
 
-        // Send subscription reminders at 12:05 PM Nairobi time
-        $schedule->command('subscriptions:send-reminders')
-            ->dailyAt('12:05')
-            ->timezone('Africa/Nairobi')
-            ->onOneServer();
-
         // Process subscription renewals daily at 9 AM Nairobi time
         $schedule->command('subscriptions:process-renewals')
             ->dailyAt('09:00')

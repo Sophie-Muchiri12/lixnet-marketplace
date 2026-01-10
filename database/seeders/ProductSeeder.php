@@ -30,11 +30,11 @@ class ProductSeeder extends Seeder
                         'features' => 'Employee records|Manual payroll|Basic payslips|Attendance tracking'
                     ],
                     'basic' => [
-                        'price' => 1999,
+                        'price' => 1,
                         'features' => 'Up to 50 employees|Automated payroll|NHIF & NSSF deductions|Leave management|Email payslips'
                     ],
                     'premium' => [
-                        'price' => 4999,
+                        'price' => 2,
                         'features' => 'Unlimited employees|PAYE & KRA integration|Advanced HR analytics|Audit trails|Priority support'
                     ],
                 ],
@@ -55,11 +55,11 @@ class ProductSeeder extends Seeder
                         'features' => 'Member registration|Basic savings tracking|Manual loan records'
                     ],
                     'basic' => [
-                        'price' => 4999,
+                        'price' => 1,
                         'features' => 'Up to 500 members|Loan processing|Interest calculations|Savings accounts|Member statements'
                     ],
                     'premium' => [
-                        'price' => 9999,
+                        'price' => 2,
                         'features' => 'Unlimited members|Automated dividends|SASRA reports|Multi-branch support|Member portal'
                     ],
                 ],
