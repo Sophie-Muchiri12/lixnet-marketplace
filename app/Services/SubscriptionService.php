@@ -182,13 +182,13 @@ class SubscriptionService
      */
     public function cancelSubscription(
         Subscription $subscription,
-        string $reason = ''
+        ?string $reason = null
     ): bool {
         try {
             $subscription->update([
                 'status' => 'cancelled',
                 'cancelled_at' => now(),
-                'cancellation_reason' => $reason
+                'cancellation_reason' => $reason ?? ''
             ]);
 
             $this->sendCancellationEmail($subscription);
