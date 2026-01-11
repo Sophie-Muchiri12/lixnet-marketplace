@@ -32,7 +32,7 @@
         }
     </style>
 
-    <title inertia>{{ config('app.name', 'Laravel') }}</title>
+    <title inertia>{{ config('app.name', 'Lixnet') }}</title>
 
     <link rel="icon" href="/favicon.png" sizes="any">
     <link rel="icon" href="/favicon.png" type="image/svg+xml">

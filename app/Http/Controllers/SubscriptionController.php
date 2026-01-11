@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Subscription;
 use App\Models\Product;
 use App\Services\SubscriptionService;
+use App\Services\SmsService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
@@ -16,10 +17,12 @@ use Illuminate\Support\Facades\Validator;
 class SubscriptionController extends Controller
 {
     protected $subscriptionService;
+    protected $smsService;
 
-    public function __construct(SubscriptionService $subscriptionService)
+    public function __construct(SubscriptionService $subscriptionService, SmsService $smsService)
     {
         $this->subscriptionService = $subscriptionService;
+        $this->smsService = $smsService;
     }
 
     /**
@@ -97,6 +100,12 @@ class SubscriptionController extends Controller
 
             if (!$paymentResult['success']) {
                 $subscription->delete();
+                
+                // Send payment failed SMS
+                if (Auth::user()->phone) {
+                    $this->smsService->sendPaymentFailedSms($subscription, $subscription->price);
+                }
+
                 return response()->json([
                     'success' => false,
                     'message' => 'Failed to initiate payment',
@@ -282,6 +291,7 @@ class SubscriptionController extends Controller
                 ], 400);
             }
 
+            $oldTier = $subscription->tier;
             $oldPrice = $subscription->price;
 
             // If new tier is free, update immediately and no payment needed
@@ -291,9 +301,14 @@ class SubscriptionController extends Controller
                     'price' => $newPrice,
                 ]);
 
+                // Send tier change SMS
+                if ($subscription->user->phone) {
+                    $this->smsService->sendTierChangeSms($subscription, $oldTier, $newTier);
+                }
+
                 Log::info('Subscription tier changed', [
                     'subscription_id' => $subscription->id,
-                    'old_tier' => $subscription->tier,
+                    'old_tier' => $oldTier,
                     'new_tier' => $newTier,
                     'old_price' => $oldPrice,
                     'new_price' => $newPrice
@@ -309,35 +324,25 @@ class SubscriptionController extends Controller
             }
 
             // For paid tiers, initiate payment
-            // Update tier temporarily to initiate payment
             $subscription->update([
                 'tier' => $newTier,
                 'price' => $newPrice,
             ]);
-
-            // Create a temporary subscription object for payment (same reference)
-            $paymentData = [
-                'id' => $subscription->subscription_reference,
-                'currency' => $subscription->currency,
-                'amount' => (float)$newPrice,
-                'description' => "Subscription Change: {$subscription->product->title} ({$newTier})",
-                'callback_url' => config('pesapal.callback_url'),
-                'billing_address' => [
-                    'email_address' => $subscription->user->email,
-                    'phone_number' => $subscription->user->phone,
-                    'first_name' => explode(' ', $subscription->user->name)[0] ?? '',
-                    'last_name' => explode(' ', $subscription->user->name, 2)[1] ?? '',
-                ]
-            ];
 
             $paymentResult = $this->subscriptionService->initiateSubscriptionPayment($subscription);
 
             if (!$paymentResult['success']) {
                 // Revert changes if payment fails
                 $subscription->update([
-                    'tier' => explode(',', $subscription->tier)[0], // This won't work, need to store old tier
+                    'tier' => $oldTier,
                     'price' => $oldPrice,
                 ]);
+
+                // Send payment failed SMS
+                if ($subscription->user->phone) {
+                    $this->smsService->sendPaymentFailedSms($subscription, $newPrice);
+                }
+
                 return response()->json([
                     'success' => false,
                     'message' => 'Failed to process payment for new tier',
@@ -347,6 +352,7 @@ class SubscriptionController extends Controller
 
             Log::info('Subscription tier change initiated payment', [
                 'subscription_id' => $subscription->id,
+                'old_tier' => $oldTier,
                 'new_tier' => $newTier,
                 'new_price' => $newPrice
             ]);
