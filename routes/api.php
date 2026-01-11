@@ -6,6 +6,7 @@ use App\Http\Controllers\AdminUserController;
 use App\Http\Controllers\AgentApplicationController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\PesapalCallbackController;
+use App\Http\Controllers\PaymentWebhookController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\CartController;
@@ -88,6 +89,19 @@ Route::prefix('pesapal')->group(function () {
     
     // Payment confirmation page (user-facing, shows order status)
     Route::get('/confirm', [PesapalCallbackController::class, 'confirmPayment'])->name('pesapal.confirm');
+});
+
+// Payment webhooks for subscriptions - Must be public for webhook access
+Route::prefix('webhooks')->group(function () {
+    // Subscription payment success callback
+    Route::post('/payment/success', [PaymentWebhookController::class, 'paymentSuccess'])
+        ->name('payment.webhook.success')
+        ->withoutMiddleware('App\Http\Middleware\VerifyCsrfToken');
+    
+    // Subscription payment failure callback
+    Route::post('/payment/failure', [PaymentWebhookController::class, 'paymentFailure'])
+        ->name('payment.webhook.failure')
+        ->withoutMiddleware('App\Http\Middleware\VerifyCsrfToken');
 });
 
 /*
@@ -177,7 +191,7 @@ Route::middleware(['web', 'auth', 'customer'])->group(function () {
             ->withoutMiddleware('App\Http\Middleware\VerifyCsrfToken');
     });
 
-     // Billing management - Authenticated customers
+    // Billing management - Authenticated customers
     Route::prefix('billing')->group(function () {
         Route::get('/history', [\App\Http\Controllers\BillingController::class, 'getBillingHistory'])->name('billing.history');
         Route::get('/summary', [\App\Http\Controllers\BillingController::class, 'getBillingSummary'])->name('billing.summary');
