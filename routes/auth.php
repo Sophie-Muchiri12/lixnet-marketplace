@@ -10,6 +10,7 @@ use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Auth\VerifyEmailController;
 use App\Http\Controllers\Auth\CodeVerificationController;
 use App\Http\Controllers\Auth\PasswordResetCodeController;
+use App\Http\Controllers\Auth\ResendVerificationCodeController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('guest')->group(function () {
@@ -53,15 +54,31 @@ Route::middleware('guest')->group(function () {
 });
 
 Route::middleware('auth')->group(function () {
-    // Email verification with code
+    // Email and phone verification with code
     Route::get('verify-email', [CodeVerificationController::class, 'create'])
         ->name('verification.notice');
 
+    // Main verification endpoint - handles single code for both email and phone
     Route::post('verify-email', [CodeVerificationController::class, 'store'])
         ->name('verification.verify');
 
+    // Verify email specifically
+    Route::post('verify-email/email', [CodeVerificationController::class, 'verifyEmail'])
+        ->name('verification.verify-email');
+
+    // Verify phone specifically
+    Route::post('verify-email/phone', [CodeVerificationController::class, 'verifyPhone'])
+        ->name('verification.verify-phone');
+
+    // Resend code (email or phone) - API endpoint
+    Route::post('verification/resend', [ResendVerificationCodeController::class, 'resend'])
+        ->name('verification.resend.api')
+        ->middleware('throttle:3,1');
+
+    // Resend code (email or phone) - Web form endpoint
     Route::post('verify-email/resend', [CodeVerificationController::class, 'resend'])
-        ->name('verification.resend');
+        ->name('verification.resend')
+        ->middleware('throttle:3,1');
 
     // Legacy email verification routes (optional, can be removed)
     Route::get('verify-email/{id}/{hash}', [VerifyEmailController::class])

@@ -20,10 +20,12 @@ class User extends Authenticatable
     protected $fillable = [
         'name',
         'email',
+        'phone',
         'password',
         'role',
-        'phone',
         'company',
+        'email_verified_at',
+        'phone_verified_at',
     ];
 
     /**
@@ -45,6 +47,7 @@ class User extends Authenticatable
     {
         return [
             'email_verified_at' => 'datetime',
+            'phone_verified_at' => 'datetime',
             'password' => 'hashed',
         ];
     }
@@ -122,6 +125,22 @@ class User extends Authenticatable
     }
 
     /**
+     * Check if user has verified phone.
+     */
+    public function hasVerifiedPhone()
+    {
+        return !is_null($this->phone_verified_at);
+    }
+
+    /**
+     * Check if user has verified both email and phone.
+     */
+    public function isFullyVerified()
+    {
+        return $this->hasVerifiedEmail() && $this->hasVerifiedPhone();
+    }
+
+    /**
      * Get user's full display name.
      */
     public function getDisplayNameAttribute()
@@ -130,11 +149,27 @@ class User extends Authenticatable
     }
 
     /**
-     * Scope a query to only include verified users.
+     * Scope a query to only include verified users (both email and phone).
      */
     public function scopeVerified($query)
     {
+        return $query->whereNotNull('email_verified_at')->whereNotNull('phone_verified_at');
+    }
+
+    /**
+     * Scope a query to only include email verified users.
+     */
+    public function scopeEmailVerified($query)
+    {
         return $query->whereNotNull('email_verified_at');
+    }
+
+    /**
+     * Scope a query to only include phone verified users.
+     */
+    public function scopePhoneVerified($query)
+    {
+        return $query->whereNotNull('phone_verified_at');
     }
 
     /**
