@@ -7,6 +7,7 @@ use App\Models\Order;
 use App\Models\Subscription;
 use App\Services\PesapalService;
 use App\Services\SubscriptionService;
+use App\Services\SmsService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
@@ -15,13 +16,16 @@ class PesapalCallbackController extends Controller
 {
     protected $pesapalService;
     protected $subscriptionService;
+    protected $smsService;
 
     public function __construct(
         PesapalService $pesapalService,
-        SubscriptionService $subscriptionService
+        SubscriptionService $subscriptionService,
+        SmsService $smsService
     ) {
         $this->pesapalService = $pesapalService;
         $this->subscriptionService = $subscriptionService;
+        $this->smsService = $smsService;
     }
 
     /**
@@ -319,7 +323,7 @@ class PesapalCallbackController extends Controller
     {
         try {
             // Load order items with products
-            $order->load('items.product');
+            $order->load('items.product', 'user');
 
             Log::info('📄 Creating subscriptions from order', [
                 'order_id' => $order->id,
@@ -407,6 +411,31 @@ class PesapalCallbackController extends Controller
                     'started_at' => now(),
                     'next_billing_date' => now()->addMonth()
                 ]);
+
+                // ===== SEND SMS NOTIFICATION =====
+                if ($order->user->phone) {
+                    $smsResult = $this->smsService->sendSubscriptionCreatedSms($subscription);
+                    
+                    if ($smsResult['success']) {
+                        Log::info('📱 Subscription created SMS sent', [
+                            'subscription_id' => $subscription->id,
+                            'order_id' => $order->id,
+                            'phone' => $order->user->phone
+                        ]);
+                    } else {
+                        Log::warning('Failed to send subscription created SMS', [
+                            'subscription_id' => $subscription->id,
+                            'order_id' => $order->id,
+                            'error' => $smsResult['error'] ?? 'Unknown error'
+                        ]);
+                    }
+                } else {
+                    Log::warning('User has no phone number for SMS', [
+                        'user_id' => $order->user_id,
+                        'subscription_id' => $subscription->id
+                    ]);
+                }
+                // ===== END SMS NOTIFICATION =====
 
                 // Send subscription confirmation email
                 try {
