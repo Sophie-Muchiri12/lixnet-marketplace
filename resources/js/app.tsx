@@ -9,7 +9,7 @@ import { CartProvider } from './context/cart-context';
 import { BrowserRouter } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 
-const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
+const appName = import.meta.env.VITE_APP_NAME || 'Lixnet';
 
 createInertiaApp({
     title: (title) => title ? `${title} - ${appName}` : appName,
