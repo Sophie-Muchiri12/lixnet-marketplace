@@ -22,7 +22,7 @@ export default function Register() {
                     <>
                         <div className="grid gap-6">
                             <div className="grid gap-2">
-                                <Label htmlFor="name">Name</Label>
+                                <Label htmlFor="name">Full Name</Label>
                                 <Input
                                     id="name"
                                     type="text"
@@ -31,7 +31,7 @@ export default function Register() {
                                     tabIndex={1}
                                     autoComplete="name"
                                     name="name"
-                                    placeholder="Full name"
+                                    placeholder="John Doe"
                                 />
                                 <InputError message={errors.name} className="mt-2" />
                             </div>
@@ -51,12 +51,29 @@ export default function Register() {
                             </div>
 
                             <div className="grid gap-2">
+                                <Label htmlFor="phone">Phone Number</Label>
+                                <Input
+                                    id="phone"
+                                    type="tel"
+                                    required
+                                    tabIndex={3}
+                                    autoComplete="tel"
+                                    name="phone"
+                                    placeholder="0712345678 or +254712345678"
+                                />
+                                <p className="text-xs text-muted-foreground mt-1">
+                                    We'll send a verification code to this number. Format: 0712345678 or +254712345678
+                                </p>
+                                <InputError message={errors.phone} />
+                            </div>
+
+                            <div className="grid gap-2">
                                 <Label htmlFor="password">Password</Label>
                                 <Input
                                     id="password"
                                     type="password"
                                     required
-                                    tabIndex={3}
+                                    tabIndex={4}
                                     autoComplete="new-password"
                                     name="password"
                                     placeholder="Password"
@@ -70,7 +87,7 @@ export default function Register() {
                                     id="password_confirmation"
                                     type="password"
                                     required
-                                    tabIndex={4}
+                                    tabIndex={5}
                                     autoComplete="new-password"
                                     name="password_confirmation"
                                     placeholder="Confirm password"
@@ -78,7 +95,7 @@ export default function Register() {
                                 <InputError message={errors.password_confirmation} />
                             </div>
 
-                            <Button type="submit" className="mt-2 w-full" tabIndex={5}>
+                            <Button type="submit" className="mt-2 w-full" tabIndex={6} disabled={processing}>
                                 {processing && <LoaderCircle className="h-4 w-4 animate-spin" />}
                                 Create account
                             </Button>
@@ -86,7 +103,7 @@ export default function Register() {
 
                         <div className="text-center text-sm text-muted-foreground">
                             Already have an account?{' '}
-                            <TextLink href={login} tabIndex={6}>
+                            <TextLink href={login} tabIndex={7}>
                                 Log in
                             </TextLink>
                         </div>
