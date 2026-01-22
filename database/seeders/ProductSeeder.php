@@ -30,12 +30,16 @@ class ProductSeeder extends Seeder
                         'features' => 'Employee records|Manual payroll|Basic payslips|Attendance tracking'
                     ],
                     'basic' => [
-                        'price' => 1,
-                        'features' => 'Up to 50 employees|Automated payroll|NHIF & NSSF deductions|Leave management|Email payslips'
+                        'price' => 3500,
+                        'features' => 'Up to 20 employees|Basic payroll|Statutory compliance'
+                    ],
+                    'standard' => [
+                        'price' => 8500,
+                        'features' => '21 to 100 employees|Performance management|Self-service portal'
                     ],
                     'premium' => [
-                        'price' => 2,
-                        'features' => 'Unlimited employees|PAYE & KRA integration|Advanced HR analytics|Audit trails|Priority support'
+                        'price' => 50000,
+                        'features' => '101+ employees|Multi-branch|Analytics|API access'
                     ],
                 ],
             ],
@@ -55,12 +59,16 @@ class ProductSeeder extends Seeder
                         'features' => 'Member registration|Basic savings tracking|Manual loan records'
                     ],
                     'basic' => [
-                        'price' => 1,
-                        'features' => 'Up to 500 members|Loan processing|Interest calculations|Savings accounts|Member statements'
+                        'price' => 25000,
+                        'features' => 'Up to 1,000 members|Basic savings/loans|Regulatory reporting'
+                    ],
+                    'standard' => [
+                        'price' => 50000,
+                        'features' => '1,001 to 2,500 members|Mobile banking|Multi-branch|Biometric auth'
                     ],
                     'premium' => [
-                        'price' => 2,
-                        'features' => 'Unlimited members|Automated dividends|SASRA reports|Multi-branch support|Member portal'
+                        'price' => 100000,
+                        'features' => 'Unlimited members|USSD/mobile app|Agency banking|Real-time analytics'
                     ],
                 ],
             ],
@@ -77,20 +85,24 @@ class ProductSeeder extends Seeder
                 'subscription_tiers' => [
                     'free' => [
                         'price' => 0,
-                        'features' => 'Single terminal|Basic sales recording|Manual product entry'
+                        'features' => 'Single outlet|Up to 1,000 SKUs|Basic inventory|Sales reporting'
                     ],
                     'basic' => [
-                        'price' => 2999,
-                        'features' => 'Inventory management|Barcode scanning|Sales reports|Low stock alerts'
+                        'price' => 5000,
+                        'features' => 'Single outlet|Up to 1,000 SKUs|Basic inventory|Sales reporting'
+                    ],
+                    'standard' => [
+                        'price' => 25000,
+                        'features' => '2-5 Outlets|3,000 SKUs|Loyalty program|Accounting integration'
                     ],
                     'premium' => [
-                        'price' => 6999,
-                        'features' => 'Multi-store support|Advanced inventory|Supplier management|Sales analytics'
+                        'price' => 50000,
+                        'features' => '>6 Outlets|Multi-location dashboard|E-commerce integration|Omnichannel retail|Custom hardware integration|Advanced AI features'
                     ],
                 ],
             ],
 
-            // Property Manager (Inventory category)
+            // Property Manager
             [
                 'category' => 'inventory',
                 'title' => 'Evolve Property Manager',
@@ -105,12 +117,16 @@ class ProductSeeder extends Seeder
                         'features' => 'Property & unit listing|Tenant records|Manual rent tracking'
                     ],
                     'basic' => [
-                        'price' => 2499,
-                        'features' => 'Rent invoicing|Payment tracking|Expense tracking|Tenant statements|Occupancy reports'
+                        'price' => 5000,
+                        'features' => 'Up to 20 units|Tenant management|Rent tracking|Maintenance portal'
+                    ],
+                    'standard' => [
+                        'price' => 20000,
+                        'features' => '21 to 100 units|Online payments|Vacancy listing|Contractor management'
                     ],
                     'premium' => [
-                        'price' => 5999,
-                        'features' => 'Multi-property support|Automated rent reminders|M-Pesa integration|Profit & loss reports'
+                        'price' => 50000,
+                        'features' => '>100 Units|Portfolio management|Marketing automation|Custom workflows'
                     ],
                 ],
             ],
@@ -130,12 +146,16 @@ class ProductSeeder extends Seeder
                         'features' => 'Basic invoicing|Expense tracking|Customer records'
                     ],
                     'basic' => [
-                        'price' => 1999,
-                        'features' => 'Double-entry accounting|Financial statements|Bank reconciliation|Tax reports'
+                        'price' => 2000,
+                        'features' => 'Up to 500 transactions/month|Basic invoicing|VAT|Bank reconciliation'
+                    ],
+                    'standard' => [
+                        'price' => 5000,
+                        'features' => 'Up to 5,000 transactions/month|Multi-currency|Budgeting|Tax automation'
                     ],
                     'premium' => [
-                        'price' => 4999,
-                        'features' => 'Multi-business support|Advanced analytics|Budgeting & forecasting|Audit trails'
+                        'price' => 15000,
+                        'features' => '>5,000 transactions|Consolidation|Advanced auditing|Custom reports'
                     ],
                 ],
             ],
@@ -155,12 +175,16 @@ class ProductSeeder extends Seeder
                         'features' => 'Student records|Class management|Attendance|Exam entry'
                     ],
                     'basic' => [
-                        'price' => 2999,
-                        'features' => 'Fee management|Exam reports|Parent communication|Performance tracking'
+                        'price' => 6000,
+                        'features' => 'Up to 200 students|Fee management|Attendance|Parent portal'
+                    ],
+                    'standard' => [
+                        'price' => 50000,
+                        'features' => 'Up to 500 students|Library/hostel management|Transport tracking'
                     ],
                     'premium' => [
-                        'price' => 6999,
-                        'features' => 'Online fee payments|Parent portal|Advanced analytics|SMS & email notifications'
+                        'price' => 50000,
+                        'features' => '>800 students|Multi-campus|LMS|Biometric|Mobile apps'
                     ],
                 ],
             ],
