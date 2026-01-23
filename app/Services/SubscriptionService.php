@@ -14,10 +14,12 @@ use Illuminate\Support\Facades\Log;
 class SubscriptionService
 {
     protected $pesapalService;
+    protected $smsService;
 
-    public function __construct(PesapalService $pesapalService)
+    public function __construct(PesapalService $pesapalService, SmsService $smsService)
     {
         $this->pesapalService = $pesapalService;
+        $this->smsService = $smsService;
     }
 
     /**
@@ -133,11 +135,12 @@ class SubscriptionService
     }
 
     /**
-     * Send subscription creation email
+     * Send subscription creation email and SMS
      */
     public function sendSubscriptionCreatedEmail(Subscription $subscription): void
     {
         try {
+            // Send email
             Mail::to($subscription->user->email)->send(
                 new SubscriptionCreated($subscription)
             );
@@ -146,13 +149,29 @@ class SubscriptionService
                 'subscription_id' => $subscription->id,
                 'user_email' => $subscription->user->email
             ]);
+
+            // Send SMS
+            if ($subscription->user->phone) {
+                $smsResult = $this->smsService->sendSubscriptionCreatedSms($subscription);
+                if ($smsResult['success']) {
+                    Log::info('Subscription created SMS sent', [
+                        'subscription_id' => $subscription->id,
+                        'phone' => $subscription->user->phone
+                    ]);
+                } else {
+                    Log::warning('Failed to send subscription created SMS', [
+                        'subscription_id' => $subscription->id,
+                        'error' => $smsResult['error'] ?? 'Unknown error'
+                    ]);
+                }
+            }
         } catch (\Exception $e) {
-            Log::error('Error sending subscription created email: ' . $e->getMessage());
+            Log::error('Error sending subscription created notification: ' . $e->getMessage());
         }
     }
 
     /**
-     * Send subscription renewal reminder
+     * Send subscription renewal reminder via email and SMS
      */
     public function sendRenewalReminder(Subscription $subscription, int $daysUntilRenewal): void
     {
@@ -162,6 +181,7 @@ class SubscriptionService
                 return;
             }
 
+            // Send email
             Mail::to($subscription->user->email)->send(
                 new SubscriptionRenewalReminder($subscription, $daysUntilRenewal)
             );
@@ -172,23 +192,39 @@ class SubscriptionService
                 'subscription_id' => $subscription->id,
                 'days_until_renewal' => $daysUntilRenewal
             ]);
+
+            // Send SMS
+            if ($subscription->user->phone) {
+                $smsResult = $this->smsService->sendRenewalReminderSms($subscription, $daysUntilRenewal);
+                if ($smsResult['success']) {
+                    Log::info('Renewal reminder SMS sent', [
+                        'subscription_id' => $subscription->id,
+                        'days_until_renewal' => $daysUntilRenewal
+                    ]);
+                } else {
+                    Log::warning('Failed to send renewal reminder SMS', [
+                        'subscription_id' => $subscription->id,
+                        'error' => $smsResult['error'] ?? 'Unknown error'
+                    ]);
+                }
+            }
         } catch (\Exception $e) {
             Log::error('Error sending renewal reminder: ' . $e->getMessage());
         }
     }
 
     /**
-     * Cancel a subscription
+     * Cancel a subscription and send notifications
      */
     public function cancelSubscription(
         Subscription $subscription,
-        string $reason = ''
+        ?string $reason = null
     ): bool {
         try {
             $subscription->update([
                 'status' => 'cancelled',
                 'cancelled_at' => now(),
-                'cancellation_reason' => $reason
+                'cancellation_reason' => $reason ?? ''
             ]);
 
             $this->sendCancellationEmail($subscription);
@@ -206,11 +242,12 @@ class SubscriptionService
     }
 
     /**
-     * Send subscription cancellation email
+     * Send subscription cancellation email and SMS
      */
     public function sendCancellationEmail(Subscription $subscription): void
     {
         try {
+            // Send email
             Mail::to($subscription->user->email)->send(
                 new SubscriptionCancelled($subscription)
             );
@@ -219,13 +256,29 @@ class SubscriptionService
                 'subscription_id' => $subscription->id,
                 'user_email' => $subscription->user->email
             ]);
+
+            // Send SMS
+            if ($subscription->user->phone) {
+                $smsResult = $this->smsService->sendCancellationSms($subscription);
+                if ($smsResult['success']) {
+                    Log::info('Subscription cancelled SMS sent', [
+                        'subscription_id' => $subscription->id,
+                        'phone' => $subscription->user->phone
+                    ]);
+                } else {
+                    Log::warning('Failed to send cancellation SMS', [
+                        'subscription_id' => $subscription->id,
+                        'error' => $smsResult['error'] ?? 'Unknown error'
+                    ]);
+                }
+            }
         } catch (\Exception $e) {
-            Log::error('Error sending cancellation email: ' . $e->getMessage());
+            Log::error('Error sending cancellation notification: ' . $e->getMessage());
         }
     }
 
     /**
-     * Renew a subscription for another month
+     * Renew a subscription and send notifications
      */
     public function renewSubscription(Subscription $subscription): bool
     {
@@ -234,6 +287,21 @@ class SubscriptionService
                 'next_billing_date' => $subscription->next_billing_date->addMonth(),
                 'status' => 'active'
             ]);
+
+            // Send renewal success SMS
+            if ($subscription->user->phone) {
+                $smsResult = $this->smsService->sendRenewalSuccessSms($subscription);
+                if ($smsResult['success']) {
+                    Log::info('Renewal success SMS sent', [
+                        'subscription_id' => $subscription->id
+                    ]);
+                } else {
+                    Log::warning('Failed to send renewal success SMS', [
+                        'subscription_id' => $subscription->id,
+                        'error' => $smsResult['error'] ?? 'Unknown error'
+                    ]);
+                }
+            }
 
             Log::info('Subscription renewed', [
                 'subscription_id' => $subscription->id,

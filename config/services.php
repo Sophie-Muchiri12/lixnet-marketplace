@@ -35,4 +35,10 @@ return [
         ],
     ],
 
+    'sms_leopard' => [
+        'api_key' => env('SMS_LEOPARD_API_KEY'),
+        'api_secret' => env('SMS_LEOPARD_API_SECRET'),
+        'access_token' => env('SMS_LEOPARD_ACCESS_TOKEN'),
+],
+
 ];

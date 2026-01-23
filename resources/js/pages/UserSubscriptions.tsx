@@ -49,6 +49,12 @@ export default function UserSubscriptions() {
   const [upgradeModalId, setUpgradeModalId] = useState<number | null>(null);
   const [selectedNewTier, setSelectedNewTier] = useState<string | null>(null);
 
+  // Get CSRF token from meta tag
+  const getCsrfToken = () => {
+    const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+    return token || '';
+  };
+
   useEffect(() => {
     fetchSubscriptions();
   }, []);
@@ -86,6 +92,7 @@ export default function UserSubscriptions() {
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
+          'X-CSRF-TOKEN': getCsrfToken(),
         },
         body: JSON.stringify({
           reason: cancelReason,
@@ -115,6 +122,7 @@ export default function UserSubscriptions() {
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
+          'X-CSRF-TOKEN': getCsrfToken(),
         },
         body: JSON.stringify({
           tier: newTier,

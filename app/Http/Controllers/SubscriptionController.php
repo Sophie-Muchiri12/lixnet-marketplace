@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Subscription;
 use App\Models\Product;
 use App\Services\SubscriptionService;
+use App\Services\SmsService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
@@ -16,10 +17,12 @@ use Illuminate\Support\Facades\Validator;
 class SubscriptionController extends Controller
 {
     protected $subscriptionService;
+    protected $smsService;
 
-    public function __construct(SubscriptionService $subscriptionService)
+    public function __construct(SubscriptionService $subscriptionService, SmsService $smsService)
     {
         $this->subscriptionService = $subscriptionService;
+        $this->smsService = $smsService;
     }
 
     /**
@@ -97,6 +100,12 @@ class SubscriptionController extends Controller
 
             if (!$paymentResult['success']) {
                 $subscription->delete();
+                
+                // Send payment failed SMS
+                if (Auth::user()->phone) {
+                    $this->smsService->sendPaymentFailedSms($subscription, $subscription->price);
+                }
+
                 return response()->json([
                     'success' => false,
                     'message' => 'Failed to initiate payment',
@@ -282,32 +291,58 @@ class SubscriptionController extends Controller
                 ], 400);
             }
 
-            // Cancel old subscription
-            $subscription->update([
-                'status' => 'cancelled',
-                'cancelled_at' => now(),
-                'cancellation_reason' => "Upgraded/Downgraded to {$newTier} tier"
-            ]);
+            $oldTier = $subscription->tier;
+            $oldPrice = $subscription->price;
 
-            // Create new subscription with new tier
-            $newSubscription = $this->subscriptionService->createSubscription(
-                Auth::id(),
-                $subscription->product_id,
-                $newTier
-            );
+            // If new tier is free, update immediately and no payment needed
+            if ($newPrice == 0) {
+                $subscription->update([
+                    'tier' => $newTier,
+                    'price' => $newPrice,
+                ]);
 
-            if (!$newSubscription) {
+                // Send tier change SMS
+                if ($subscription->user->phone) {
+                    $this->smsService->sendTierChangeSms($subscription, $oldTier, $newTier);
+                }
+
+                Log::info('Subscription tier changed', [
+                    'subscription_id' => $subscription->id,
+                    'old_tier' => $oldTier,
+                    'new_tier' => $newTier,
+                    'old_price' => $oldPrice,
+                    'new_price' => $newPrice
+                ]);
+
                 return response()->json([
-                    'success' => false,
-                    'message' => 'Failed to change subscription tier'
-                ], 500);
+                    'success' => true,
+                    'message' => 'Subscription tier changed successfully',
+                    'data' => [
+                        'subscription' => $subscription
+                    ]
+                ]);
             }
 
-            // Initiate payment for new tier if different price
-            $paymentResult = $this->subscriptionService->initiateSubscriptionPayment($newSubscription);
+            // For paid tiers, initiate payment
+            $subscription->update([
+                'tier' => $newTier,
+                'price' => $newPrice,
+            ]);
 
-            if (!$paymentResult['success'] && $newPrice > 0) {
-                $newSubscription->delete();
+            $paymentResult = $this->subscriptionService->initiateSubscriptionPayment($subscription);
+
+            if (!$paymentResult['success']) {
+                // Revert changes if payment fails
+                $subscription->update([
+                    'tier' => $oldTier,
+                    'price' => $oldPrice,
+                ]);
+
+                // Send payment failed SMS
+                if ($subscription->user->phone) {
+                    $this->smsService->sendPaymentFailedSms($subscription, $newPrice);
+                }
+
                 return response()->json([
                     'success' => false,
                     'message' => 'Failed to process payment for new tier',
@@ -315,15 +350,20 @@ class SubscriptionController extends Controller
                 ], 500);
             }
 
-            $this->subscriptionService->sendSubscriptionCreatedEmail($newSubscription);
+            Log::info('Subscription tier change initiated payment', [
+                'subscription_id' => $subscription->id,
+                'old_tier' => $oldTier,
+                'new_tier' => $newTier,
+                'new_price' => $newPrice
+            ]);
 
             return response()->json([
                 'success' => true,
-                'message' => 'Subscription tier changed successfully',
+                'message' => 'Please complete the payment to change your subscription tier',
                 'data' => [
-                    'old_subscription' => $subscription,
-                    'new_subscription' => $newSubscription,
-                    'payment_url' => $paymentResult['payment_url'] ?? null
+                    'subscription' => $subscription,
+                    'payment_url' => $paymentResult['payment_url'],
+                    'order_tracking_id' => $paymentResult['order_tracking_id']
                 ]
             ]);
         } catch (\Exception $e) {
