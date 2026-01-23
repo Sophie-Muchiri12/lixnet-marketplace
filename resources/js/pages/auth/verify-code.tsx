@@ -42,15 +42,16 @@ export default function VerifyCode({ user }: Props) {
         const flash = page.props.flash as any;
         if (flash?.status) {
             setMessage({ type: 'success', text: flash.status });
+            // Don't auto clear - let user see it while redirecting
         }
     }, [page.props.flash]);
 
-    // Auto redirect when both verified
+    // Auto redirect when both verified (after 5 seconds)
     useEffect(() => {
         if (emailVerified && phoneVerified) {
             const timer = setTimeout(() => {
-                window.location.href = '/';
-            }, 2000);
+                window.location.href = '/marketplace';
+            }, 5000);
             return () => clearTimeout(timer);
         }
     }, [emailVerified, phoneVerified]);
@@ -116,15 +117,6 @@ export default function VerifyCode({ user }: Props) {
         }
     };
 
-    const handleVerify = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (code.length !== 6) {
-            setMessage({ type: 'error', text: 'Please enter a 6-digit code' });
-            return;
-        }
-        // Allow form to submit naturally - don't prevent default
-    };
-
     const isFullyVerified = emailVerified && phoneVerified;
     const verificationProgress = [emailVerified, phoneVerified].filter(Boolean).length;
 
@@ -137,22 +129,7 @@ export default function VerifyCode({ user }: Props) {
             >
                 <div className="space-y-6">
                     {/* Progress Indicator */}
-                    <div className="bg-blue-50 rounded-lg p-4">
-                        <div className="flex items-center justify-between mb-2">
-                            <span className="text-sm font-medium text-blue-900">
-                                Verification Progress
-                            </span>
-                            <span className="text-sm font-semibold text-blue-600">
-                                {verificationProgress}/2 verified
-                            </span>
-                        </div>
-                        <div className="w-full bg-blue-200 rounded-full h-2">
-                            <div
-                                className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                                style={{ width: `${(verificationProgress / 2) * 100}%` }}
-                            />
-                        </div>
-                    </div>
+                 
 
                     {/* Message Alert */}
                     {message && (
@@ -278,13 +255,16 @@ export default function VerifyCode({ user }: Props) {
 
                     {/* Success Message */}
                     {isFullyVerified && (
-                        <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-center">
-                            <div className="flex justify-center mb-2">
-                                <CheckCircle2 className="h-8 w-8 text-green-600" />
+                        <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-center space-y-2">
+                            <div className="flex justify-center">
+                                <CheckCircle2 className="h-8 w-8 text-green-600 animate-bounce" />
                             </div>
-                            <h3 className="font-semibold text-green-900 mb-1">Account Verified!</h3>
+                            <h3 className="font-semibold text-green-900">Account Verified Successfully! ✨</h3>
                             <p className="text-sm text-green-700">
-                                Both your email and phone have been verified. Redirecting to marketplace...
+                                Both your email and phone have been verified.
+                            </p>
+                            <p className="text-xs text-green-600 pt-2">
+                                Redirecting to marketplace in 5 seconds...
                             </p>
                         </div>
                     )}

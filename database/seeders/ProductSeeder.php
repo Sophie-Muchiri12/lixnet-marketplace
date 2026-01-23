@@ -25,10 +25,6 @@ class ProductSeeder extends Seeder
                 'note' => 'NHIF, NSSF & KRA compliant',
                 'is_subscription' => true,
                 'subscription_tiers' => [
-                    'free' => [
-                        'price' => 0,
-                        'features' => 'Employee records|Manual payroll|Basic payslips|Attendance tracking'
-                    ],
                     'basic' => [
                         'price' => 3500,
                         'features' => 'Up to 20 employees|Basic payroll|Statutory compliance'
@@ -54,10 +50,6 @@ class ProductSeeder extends Seeder
                 'note' => 'SASRA compliant',
                 'is_subscription' => true,
                 'subscription_tiers' => [
-                    'free' => [
-                        'price' => 0,
-                        'features' => 'Member registration|Basic savings tracking|Manual loan records'
-                    ],
                     'basic' => [
                         'price' => 25000,
                         'features' => 'Up to 1,000 members|Basic savings/loans|Regulatory reporting'
@@ -83,10 +75,6 @@ class ProductSeeder extends Seeder
                 'note' => 'M-Pesa & receipt printing supported',
                 'is_subscription' => true,
                 'subscription_tiers' => [
-                    'free' => [
-                        'price' => 0,
-                        'features' => 'Single outlet|Up to 1,000 SKUs|Basic inventory|Sales reporting'
-                    ],
                     'basic' => [
                         'price' => 5000,
                         'features' => 'Single outlet|Up to 1,000 SKUs|Basic inventory|Sales reporting'
@@ -112,10 +100,6 @@ class ProductSeeder extends Seeder
                 'note' => 'Ideal for rentals & apartments',
                 'is_subscription' => true,
                 'subscription_tiers' => [
-                    'free' => [
-                        'price' => 0,
-                        'features' => 'Property & unit listing|Tenant records|Manual rent tracking'
-                    ],
                     'basic' => [
                         'price' => 5000,
                         'features' => 'Up to 20 units|Tenant management|Rent tracking|Maintenance portal'
@@ -141,10 +125,6 @@ class ProductSeeder extends Seeder
                 'note' => 'KRA compliant',
                 'is_subscription' => true,
                 'subscription_tiers' => [
-                    'free' => [
-                        'price' => 0,
-                        'features' => 'Basic invoicing|Expense tracking|Customer records'
-                    ],
                     'basic' => [
                         'price' => 2000,
                         'features' => 'Up to 500 transactions/month|Basic invoicing|VAT|Bank reconciliation'
@@ -170,10 +150,6 @@ class ProductSeeder extends Seeder
                 'note' => 'For primary & secondary schools',
                 'is_subscription' => true,
                 'subscription_tiers' => [
-                    'free' => [
-                        'price' => 0,
-                        'features' => 'Student records|Class management|Attendance|Exam entry'
-                    ],
                     'basic' => [
                         'price' => 6000,
                         'features' => 'Up to 200 students|Fee management|Attendance|Parent portal'
