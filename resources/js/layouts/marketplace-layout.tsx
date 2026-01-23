@@ -57,18 +57,20 @@ export function MarketplaceLayout({
     };
 
     return (
-        <div className="min-h-screen bg-background-color  flex flex-col">
-            <MarketplaceHeader
-                categories={categories}
-                onSearch={onSearch}
-                onCategoryFilter={onCategoryFilter}
-                onCartClick={onCartClick}
-                onLoginClick={onLoginClick}
-            />
+        <div className="min-h-screen bg-background-color flex flex-col">
+            <div className="shadow-lg">
+                <MarketplaceHeader
+                    categories={categories}
+                    onSearch={onSearch}
+                    onCategoryFilter={onCategoryFilter}
+                    onCartClick={onCartClick}
+                    onLoginClick={onLoginClick}
+                />
+            </div>
 
             <ShowFlashToast />
 
-            <main className="flex-1">
+            <main className="flex-1 p-4">
                 {children}
             </main>
 
