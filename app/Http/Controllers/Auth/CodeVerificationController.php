@@ -62,53 +62,47 @@ class CodeVerificationController extends Controller
                 'phone_verified' => $user->hasVerifiedPhone(),
             ]);
 
-            // Try to verify as email first if not already verified
+            $emailVerified = false;
+            $phoneVerified = false;
+
+            // Try to verify email if not already verified
             if (!$user->hasVerifiedEmail()) {
                 if (VerificationService::verifyCode($user, $code, 'email')) {
-                    // Mark email as verified
                     $user->email_verified_at = now();
                     $user->save();
+                    $emailVerified = true;
 
                     Log::info('Email verified successfully', [
                         'user_id' => $user->id,
                         'email' => $user->email
                     ]);
-
-                    // Check if phone is also verified now
-                    if ($user->hasVerifiedPhone()) {
-                        return redirect()->intended(route('marketplace'))->with('status', 'Account verified successfully!');
-                    }
-
-                    return back()->with('status', 'Email verified! Now verify your phone with the same code.');
                 }
+            } else {
+                $emailVerified = true;
             }
 
-            // Try to verify as phone if not already verified
+            // Try to verify phone if not already verified
             if (!$user->hasVerifiedPhone()) {
                 if (VerificationService::verifyCode($user, $code, 'phone')) {
-                    // Mark phone as verified
                     $user->phone_verified_at = now();
                     $user->save();
+                    $phoneVerified = true;
 
                     Log::info('Phone verified successfully', [
                         'user_id' => $user->id,
                         'phone' => $user->phone
                     ]);
-
-                    // Check if email is also verified
-                    if ($user->hasVerifiedEmail()) {
-                        return redirect()->intended(route('marketplace'))->with('status', 'Account verified successfully!');
-                    }
-
-                    return back()->with('status', 'Phone verified! Now verify your email with the same code.');
                 }
+            } else {
+                $phoneVerified = true;
             }
 
-            // If we get here, code was invalid or both already verified
-            if ($user->hasVerifiedEmail() && $user->hasVerifiedPhone()) {
-                return redirect()->intended(route('marketplace'))->with('status', 'Account already verified!');
+            // If both are verified (either just now or already were), redirect with success
+            if ($emailVerified && $phoneVerified) {
+                return redirect()->intended(route('marketplace'))->with('status', 'Account verified successfully!');
             }
 
+            // If code was invalid or expired
             throw ValidationException::withMessages([
                 'code' => 'The verification code is invalid or expired.',
             ]);
@@ -130,97 +124,27 @@ class CodeVerificationController extends Controller
     }
 
     /**
-     * Verify email specifically
-     */
-    public function verifyEmail(Request $request): RedirectResponse
-    {
-        $request->validate([
-            'code' => 'required|string|size:6',
-        ]);
-
-        $user = $request->user();
-
-        if (!VerificationService::verifyCode($user, $request->code, 'email')) {
-            throw ValidationException::withMessages([
-                'email_code' => 'The verification code is invalid or expired.',
-            ]);
-        }
-
-        // Mark email as verified
-        $user->email_verified_at = now();
-        $user->save();
-
-        Log::info('Email verified', [
-            'user_id' => $user->id,
-            'email' => $user->email
-        ]);
-
-        if ($request->expectsJson()) {
-            return response()->json([
-                'message' => 'Email verified successfully',
-                'redirect' => route('verification.notice'),
-            ]);
-        }
-
-        return back()->with('status', 'Email verified successfully!');
-    }
-
-    /**
-     * Verify phone specifically
-     */
-    public function verifyPhone(Request $request): RedirectResponse
-    {
-        $request->validate([
-            'code' => 'required|string|size:6',
-        ]);
-
-        $user = $request->user();
-
-        if (!VerificationService::verifyCode($user, $request->code, 'phone')) {
-            throw ValidationException::withMessages([
-                'phone_code' => 'The verification code is invalid or expired.',
-            ]);
-        }
-
-        // Mark phone as verified
-        $user->phone_verified_at = now();
-        $user->save();
-
-        Log::info('Phone verified', [
-            'user_id' => $user->id,
-            'phone' => $user->phone
-        ]);
-
-        if ($request->expectsJson()) {
-            return response()->json([
-                'message' => 'Phone verified successfully',
-                'redirect' => route('marketplace'),
-            ]);
-        }
-
-        return back()->with('status', 'Phone verified successfully!');
-    }
-
-    /**
-     * Resend verification code (email or phone).
+     * Resend verification code (both email and phone).
      */
     public function resend(Request $request): RedirectResponse
     {
         $request->validate([
-            'type' => 'required|in:email,phone',
+            'type' => 'required|in:email,phone,both',
         ]);
 
         $user = $request->user();
         $type = $request->input('type');
 
         try {
-            if ($type === 'email') {
-                VerificationService::sendVerificationCode($user, 'email', 'email_verification');
-                $message = 'Verification code sent to your email';
-            } else {
-                // Send phone verification code
-                $this->sendPhoneVerificationCode($user);
-                $message = 'Verification code sent to your phone';
+            // Generate ONE code for both
+            $code = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+
+            if ($type === 'email' || $type === 'both') {
+                VerificationService::sendVerificationCode($user, 'email', 'email_verification', $code);
+            }
+
+            if ($type === 'phone' || $type === 'both') {
+                $this->sendPhoneVerificationCode($user, $code);
             }
 
             Log::info('Verification code resent', [
@@ -230,11 +154,12 @@ class CodeVerificationController extends Controller
 
             if ($request->expectsJson()) {
                 return response()->json([
-                    'message' => $message,
+                    'success' => true,
+                    'message' => 'Verification code resent to your email and phone',
                 ]);
             }
 
-            return back()->with('status', $message);
+            return back()->with('status', 'Verification code resent to your email and phone');
         } catch (\Exception $e) {
             Log::error('Error resending verification code: ' . $e->getMessage());
 
@@ -252,11 +177,8 @@ class CodeVerificationController extends Controller
     /**
      * Send phone verification code via SMS
      */
-    private function sendPhoneVerificationCode($user): void
+    private function sendPhoneVerificationCode($user, string $code): void
     {
-        // Generate 6-digit code
-        $phoneCode = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
-
         // Invalidate previous codes
         \App\Models\VerificationCode::where('user_id', $user->id)
             ->where('type', 'phone')
@@ -266,13 +188,13 @@ class CodeVerificationController extends Controller
         // Store code
         \App\Models\VerificationCode::create([
             'user_id' => $user->id,
-            'code' => $phoneCode,
+            'code' => $code,
             'type' => 'phone',
             'expires_at' => now()->addMinutes(15),
         ]);
 
         // Send SMS
-        $message = "Your Lixnet verification code is: {$phoneCode}. Valid for 15 minutes.";
+        $message = "Your Lixnet verification code is: {$code}. Valid for 15 minutes.";
         $smsResult = $this->smsService->send($user->phone, $message);
 
         if (!$smsResult['success']) {

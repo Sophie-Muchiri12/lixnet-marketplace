@@ -11,14 +11,22 @@ class VerificationService
 {
     /**
      * Generate and send verification code
+     * 
+     * @param User $user
+     * @param string $type
+     * @param string $purpose
+     * @param string|null $code Optional: use a specific code instead of generating one
      */
     public static function sendVerificationCode(
         User $user,
         string $type = 'email',
-        string $purpose = 'email_verification'
+        string $purpose = 'email_verification',
+        ?string $code = null
     ): VerificationCode {
-        // Generate 6-digit code
-        $code = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+        // Generate 6-digit code if not provided
+        if ($code === null) {
+            $code = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+        }
 
         // Invalidate previous unverified codes
         VerificationCode::where('user_id', $user->id)

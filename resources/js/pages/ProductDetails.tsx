@@ -229,8 +229,8 @@ export default function ProductDetails({ product }: ProductDetailsProps) {
   };
 
   const tierTitles: Record<string, string> = {
-    free: 'Free',
     basic: 'Basic',
+    standard: 'Standard',
     premium: 'Premium'
   };
 
@@ -328,73 +328,78 @@ export default function ProductDetails({ product }: ProductDetailsProps) {
           <p className="text-gray-600 mb-8">Select a subscription tier that fits your needs</p>
 
           <div className="grid md:grid-cols-3 gap-6 mb-8">
-            {Object.entries(product.subscription_tiers).map(([tier, tierData]) => {
-              const isSelected = selectedTier === tier;
-              const isCurrentPlan = currentSubscriptionTier === tier;
-              const features = parseFeatures(tierData.features);
+            {Object.entries(product.subscription_tiers)
+              .sort(([tierA], [tierB]) => {
+                const tierOrder = { basic: 0, standard: 1, premium: 2 };
+                return (tierOrder[tierA as keyof typeof tierOrder] ?? 999) - (tierOrder[tierB as keyof typeof tierOrder] ?? 999);
+              })
+              .map(([tier, tierData]) => {
+                const isSelected = selectedTier === tier;
+                const isCurrentPlan = currentSubscriptionTier === tier;
+                const features = parseFeatures(tierData.features);
 
-              return (
-                <div
-                  key={tier}
-                  onClick={() => !isCurrentPlan && handleSelectTier(tier)}
-                  className={`rounded-lg border-2 transition ${!isCurrentPlan ? 'cursor-pointer' : 'cursor-not-allowed'} p-6 ${
-                    isCurrentPlan
-                      ? 'border-green-500 bg-green-50'
-                      : isSelected
-                      ? 'border-brand-blue bg-blue-50'
-                      : 'border-border-color bg-card-color hover:border-brand-blue'
-                  }`}
-                >
-                  {/* Tier Title */}
-                  <h3 className="text-xl font-bold text-dark-blue mb-4">
-                    {tierTitles[tier]}
-                  </h3>
+                return (
+                  <div
+                    key={tier}
+                    onClick={() => !isCurrentPlan && handleSelectTier(tier)}
+                    className={`rounded-lg border-2 transition ${!isCurrentPlan ? 'cursor-pointer' : 'cursor-not-allowed'} p-6 ${
+                      isCurrentPlan
+                        ? 'border-green-500 bg-green-50'
+                        : isSelected
+                        ? 'border-brand-blue bg-blue-50'
+                        : 'border-border-color bg-card-color hover:border-brand-blue'
+                    }`}
+                  >
+                    {/* Tier Title */}
+                    <h3 className="text-xl font-bold text-dark-blue mb-4">
+                      {tierTitles[tier]}
+                    </h3>
 
-                  {/* Price */}
-                  <div className="mb-6">
-                    <div className="text-3xl font-bold text-brand-blue">
-                      KSh {tierData.price.toLocaleString()}
-                    </div>
-                    <p className="text-gray-600 text-sm">per month</p>
-                  </div>
-
-                  {/* Features with Checkmarks */}
-                  <div className="mb-6 space-y-3">
-                    {features.map((feature, idx) => (
-                      <div key={idx} className="flex items-start gap-3">
-                        <CheckCircle2 className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
-                        <span className="text-gray-700 text-sm">{feature}</span>
+                    {/* Price */}
+                    <div className="mb-6">
+                      <div className="text-3xl font-bold text-brand-blue">
+                        KSh {tierData.price.toLocaleString()}
                       </div>
-                    ))}
-                  </div>
+                      <p className="text-gray-600 text-sm">per month</p>
+                    </div>
 
-                  {/* Select Button */}
-                  {isCurrentPlan ? (
-                    <button
-                      disabled
-                      className="w-full bg-green-600 text-white py-3 rounded-lg font-semibold flex items-center justify-center gap-2 hover:bg-green-600 transition cursor-not-allowed opacity-90"
-                    >
-                      <Check size={20} />
-                      Current Plan
-                    </button>
-                  ) : isSelected ? (
-                    <button
-                      className="w-full bg-brand-blue text-white py-3 rounded-lg font-semibold flex items-center justify-center gap-2 hover:bg-dark-blue transition"
-                    >
-                      <Check size={20} />
-                      Selected
-                    </button>
-                  ) : (
-                    <button
-                      onClick={() => handleSelectTier(tier)}
-                      className="w-full border-2 border-brand-blue text-brand-blue py-3 rounded-lg font-semibold hover:bg-blue-50 transition"
-                    >
-                      Select Plan
-                    </button>
-                  )}
-                </div>
-              );
-            })}
+                    {/* Features with Checkmarks */}
+                    <div className="mb-6 space-y-3">
+                      {features.map((feature, idx) => (
+                        <div key={idx} className="flex items-start gap-3">
+                          <CheckCircle2 className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+                          <span className="text-gray-700 text-sm">{feature}</span>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Select Button */}
+                    {isCurrentPlan ? (
+                      <button
+                        disabled
+                        className="w-full bg-green-600 text-white py-3 rounded-lg font-semibold flex items-center justify-center gap-2 hover:bg-green-600 transition cursor-not-allowed opacity-90"
+                      >
+                        <Check size={20} />
+                        Current Plan
+                      </button>
+                    ) : isSelected ? (
+                      <button
+                        className="w-full bg-brand-blue text-white py-3 rounded-lg font-semibold flex items-center justify-center gap-2 hover:bg-dark-blue transition"
+                      >
+                        <Check size={20} />
+                        Selected
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => handleSelectTier(tier)}
+                        className="w-full border-2 border-brand-blue text-brand-blue py-3 rounded-lg font-semibold hover:bg-blue-50 transition"
+                      >
+                        Select Plan
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
           </div>
 
           {/* Add to Cart Button */}

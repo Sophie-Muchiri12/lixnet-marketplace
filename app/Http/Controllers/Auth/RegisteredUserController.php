@@ -78,8 +78,8 @@ class RegisteredUserController extends Controller
             // Generate ONE code to use for both email and SMS
             $code = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
 
-            // Send verification code to email
-            VerificationService::sendVerificationCode($user, 'email', 'email_verification');
+            // Send verification code to email WITH the same code
+            VerificationService::sendVerificationCode($user, 'email', 'email_verification', $code);
 
             // Send the SAME verification code via SMS
             $this->sendPhoneVerificationCode($user, $code);
@@ -137,12 +137,12 @@ class RegisteredUserController extends Controller
 
     /**
      * Send phone verification code via SMS
-     * Uses the SAME code that was sent to email
+     * Uses the PROVIDED code (same as email)
      */
     private function sendPhoneVerificationCode(User $user, string $code): void
     {
         try {
-            // Store the SAME code for phone verification
+            // Store the code for phone verification
             \App\Models\VerificationCode::create([
                 'user_id' => $user->id,
                 'code' => $code,
