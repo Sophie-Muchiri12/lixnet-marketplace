@@ -195,6 +195,17 @@ Route::middleware(['auth', 'verified', 'admin'])->prefix('admin')->name('admin.'
     Route::get('job-applications', function () {
         return Inertia::render('admin/job-applications');
     })->name('job-applications');
+
+    // Agent applications management
+    Route::get('agent-applications', function () {
+        return Inertia::render('admin/agent-applications/index');
+    })->name('agent-applications');
+
+    Route::get('agent-applications/{application}', function (App\Models\AgentApplication $application) {
+        return Inertia::render('admin/agent-applications/show', [
+            'applicationId' => $application->id,
+        ]);
+    })->name('agent-applications.show');
 });
 
 
