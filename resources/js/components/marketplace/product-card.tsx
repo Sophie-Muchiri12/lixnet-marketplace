@@ -150,17 +150,17 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
         <Card className="group bg-card-color py-0 hover:shadow-lg transition-all duration-300 border border-border-color hover:-translate-y-1">
             <CardContent className="p-5">
                 {/* Product Image/Icon */}
-                <div className="h-48 bg-gradient-to-br from-blue-50 to-white rounded-lg flex items-center justify-center mb-4 border border-border-color">
+                <div className="h-48 bg-linear-to-br from-blue-50 to-white rounded-lg flex items-center justify-center mb-4 border border-border-color">
                     {iconClass}
                 </div>
 
                 {/* Product Title */}
-                <h3 className="text-lg font-semibold text-dark-blue mb-2 line-clamp-2 min-h-[3.5rem]">
+                <h3 className="text-lg font-semibold text-dark-blue mb-2 line-clamp-2 min-h-14">
                     {product.title}
                 </h3>
 
                 {/* Product Description */}
-                <p className="text-sm text-gray-600 mb-4 line-clamp-3 min-h-[4.5rem]">
+                <p className="text-sm text-gray-600 mb-4 line-clamp-3 min-h-18">
                     {product.description}
                 </p>
 

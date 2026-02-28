@@ -104,13 +104,17 @@
     --sidebar-border: oklch(0.922 0 0);
     --sidebar-ring: oklch(0.87 0 0);
 /* marketplace colors */
-    --background-color: #f8f9fa;
+    --background-color: #e8ecf1;
     --card-color: #ffffff;
-    --border-color: #d1d5db;
+    --border-color: #c4ccd6;
     --brand-blue: #0066cc;
     --dark-blue: #00264d;
-    --text-dark: #101828;
+    --text-dark: #1a1f2e;
     --blue-black: #001a33;
+    --input-bg: #ffffff;
+    --input-border: #9ca3af;
+    --input-focus-border: #0066cc;
+    --input-focus-ring: rgba(0, 102, 204, 0.2);
 }
 
 .dark {

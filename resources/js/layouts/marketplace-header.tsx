@@ -82,7 +82,7 @@ export function MarketplaceHeader({
                     <form onSubmit={handleSearch} className="flex-1 max-w-2xl mx-4">
                         <div className="flex">
                             <Select value={selectedCategory} onValueChange={handleCategoryChange}>
-                                <SelectTrigger className="w-48 bg-gray-100 text-gray-900 border-r border-gray-300 rounded-l rounded-r-none">
+                                <SelectTrigger className="w-48 bg-white text-gray-900 border-2 border-gray-300 rounded-l rounded-r-none shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200">
                                     <SelectValue placeholder="All Categories" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -100,7 +100,7 @@ export function MarketplaceHeader({
                                 placeholder="Search for software solutions..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                className="flex-1 bg-card-color text-gray-900 border-0 rounded-none"
+                                className="flex-1 bg-white text-gray-900 border-2 border-gray-300 rounded-none shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
                             />
 
                             <Button

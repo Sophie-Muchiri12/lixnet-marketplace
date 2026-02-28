@@ -100,14 +100,37 @@ class ProductController extends Controller
             'rating' => 'nullable|numeric|min:0|max:5',
             'rating_count' => 'nullable|integer|min:0',
             'note' => 'nullable|string|max:500',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
             'is_subscription' => 'nullable|boolean',
             'subscription_tiers' => 'nullable|json',
         ]);
 
         try {
-            $product = Product::create($request->only([
+            $imageUploadService = new ImageUploadService();
+            $imagePath = null;
+
+            // Handle image upload
+            if ($request->hasFile('image')) {
+                $uploadResult = $imageUploadService->uploadImage($request->file('image'));
+                if ($uploadResult) {
+                    $imagePath = $uploadResult['url'];
+                } else {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Failed to upload image'
+                    ], 422);
+                }
+            }
+
+            $productData = $request->only([
                 'category_id', 'title', 'description', 'price', 'rating', 'rating_count', 'note', 'is_subscription', 'subscription_tiers'
-            ]));
+            ]);
+
+            if ($imagePath) {
+                $productData['image_path'] = $imagePath;
+            }
+
+            $product = Product::create($productData);
 
             $product->load('category');
 
@@ -271,6 +294,15 @@ class ProductController extends Controller
                     'success' => false,
                     'message' => 'Cannot delete product that is in carts or orders'
                 ], 422);
+            }
+
+            // Delete image from Cloudinary if exists
+            if ($product->image_path) {
+                $imageUploadService = new ImageUploadService();
+                $publicId = $imageUploadService->extractPublicId($product->image_path);
+                if ($publicId) {
+                    $imageUploadService->deleteImage($publicId);
+                }
             }
 
             $product->delete();

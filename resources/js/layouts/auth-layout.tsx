@@ -12,14 +12,14 @@ export default function AuthSimpleLayout({
     children 
 }: AuthSimpleLayoutProps) {
     return (
-        <div className="min-h-screen bg-white flex flex-col items-center justify-center px-4 py-12">
+        <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-center px-4 py-12">
             {/* Logo Section */}
             <div className="mb-8 text-center">
                 <a href="/" className="inline-block">
                     <img 
                         src={logo}
                         alt="Lixnet" 
-                        className="h-20 w-auto"
+                        className="h-20 w-auto shadow-md rounded-lg"
                     />
                 </a>
             </div>
@@ -37,7 +37,7 @@ export default function AuthSimpleLayout({
                 </div>
 
                 {/* Form Content */}
-                <div>
+                <div className="bg-white rounded-xl shadow-lg p-8 border border-gray-200">
                     {children}
                 </div>
             </div>
