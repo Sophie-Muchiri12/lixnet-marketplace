@@ -39,7 +39,8 @@ class Agent extends Model
         });
     }
 
-    // Relationships
+    // ── Relationships ─────────────────────────────────────────────────────────
+
     public function user()
     {
         return $this->belongsTo(User::class);
@@ -65,8 +66,17 @@ class Agent extends Model
         return $this->hasMany(Order::class);
     }
 
+    public function messages()
+    {
+        return $this->hasMany(AgentMessage::class);
+    }
+
+    /**
+     * BUG FIX: The original model used 'agent_id' as the FK for a belongsTo,
+     * which is wrong. AgentTier is referenced via tier_id on the agents table.
+     */
     public function tier()
     {
-        return $this->belongsTo(AgentTier::class, 'agent_id');
+        return $this->belongsTo(AgentTier::class, 'tier_id');
     }
 }

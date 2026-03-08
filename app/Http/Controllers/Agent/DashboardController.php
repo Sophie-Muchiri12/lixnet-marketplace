@@ -13,185 +13,132 @@ use Illuminate\Support\Carbon;
 class DashboardController extends Controller
 {
     /**
-     * Get agent dashboard data
+     * Get agent dashboard data.
      */
     public function index()
     {
         $user = Auth::user();
 
-        // Get agent record
         $agent = Agent::where('user_id', $user->id)
-            ->with(['commissions', 'tier'])
+            ->with(['tier'])
             ->firstOrFail();
 
-        // Get current year commission data
-        $currentYearStart = Carbon::now()->year . '-01-01';
-        $currentYearEnd = Carbon::now()->year . '-12-31';
+        $currentTier    = $this->getCurrentTierInfo($agent);
+        $stats          = $this->getAgentStats($agent, $currentTier);
+        $quarterlyData  = $this->getQuarterlyData($agent);
 
-        $currentCommission = Commission::where('agent_id', $agent->id)
-            ->whereBetween('period_start', [$currentYearStart, $currentYearEnd])
-            ->latest()
-            ->first();
-
-        // Get current tier info
-        $currentTier = $this->getCurrentTierInfo($agent, $currentCommission);
-
-        // Get stats
-        $stats = $this->getAgentStats($agent, $currentCommission, $currentTier);
-
-        // Get quarterly data
-        $quarterlyData = $this->getQuarterlyData($agent);
-
-        // Get recent sales
         $recentSales = Order::where('agent_id', $agent->id)
             ->where('created_at', '>=', Carbon::now()->startOfMonth())
             ->orderBy('created_at', 'desc')
             ->limit(10)
             ->get()
-            ->map(function ($order) {
-                return [
-                    'id' => $order->id,
-                    'order_reference' => $order->order_reference,
-                    'full_name' => $order->full_name,
-                    'total_amount' => (float) $order->total_amount,
-                    'status' => $order->status,
-                    'created_at' => $order->created_at->toDateString(),
-                ];
-            });
+            ->map(fn ($o) => [
+                'id'              => $o->id,
+                'order_reference' => $o->order_reference,
+                'full_name'       => $o->full_name,
+                'total_amount'    => (float) $o->total_amount,
+                'status'          => $o->status,
+                'created_at'      => $o->created_at->toDateString(),
+            ]);
 
         return response()->json([
-            'stats' => $stats,
-            'tier_info' => $currentTier,
+            'agent_name'     => $user->name,
+            'agent_code'     => $agent->agent_code,   // ← added; was missing in original
+            'stats'          => $stats,
+            'tier_info'      => $currentTier,
             'quarterly_data' => $quarterlyData,
-            'recent_sales' => $recentSales,
-            'agent_name' => $user->display_name ?? $user->name,
+            'recent_sales'   => $recentSales,
         ]);
     }
 
-    /**
-     * Get agent statistics
-     */
-    private function getAgentStats(Agent $agent, ?Commission $currentCommission, array $tierInfo)
+    // ── Private helpers ───────────────────────────────────────────────────────
+
+    private function getAgentStats(Agent $agent, array $tierInfo): array
     {
-        // Total sales from all orders
         $totalSales = Order::where('agent_id', $agent->id)
             ->where('status', '!=', 'cancelled')
             ->sum('total_amount');
 
-        // Total earnings from current year commission
-        $totalEarnings = $currentCommission?->total_commission ?? 0;
+        // Current-year earnings from paid commissions
+        $totalEarnings = Commission::where('agent_id', $agent->id)
+            ->where('status', 'paid')
+            ->whereYear('period_start', Carbon::now()->year)
+            ->sum('total_commission');
 
-        // Count unique customers
         $customersCount = Order::where('agent_id', $agent->id)
             ->where('status', '!=', 'cancelled')
             ->distinct('email')
             ->count('email');
 
         return [
-            'total_sales' => (float) $totalSales,
-            'total_earnings' => (float) $totalEarnings,
+            'total_sales'     => (float) $totalSales,
+            'total_earnings'  => (float) $totalEarnings,
             'customers_count' => $customersCount,
-            'current_tier' => $tierInfo['name'],
-            'current_tier_color' => $this->getTierColor($tierInfo['name']),
+            'commission_rate' => $tierInfo['commission_rate'],
+            'current_tier'    => $tierInfo['name'],
         ];
     }
 
-    /**
-     * Get current tier information
-     */
-    private function getCurrentTierInfo(Agent $agent, ?Commission $currentCommission)
+    private function getCurrentTierInfo(Agent $agent): array
     {
-        $totalSales = Order::where('agent_id', $agent->id)
+        $totalSales = (float) Order::where('agent_id', $agent->id)
             ->where('status', '!=', 'cancelled')
             ->sum('total_amount');
 
-        // Determine current tier based on total sales
         $tiers = [
-            ['name' => 'bronze', 'min' => 0, 'max' => 25000],
-            ['name' => 'silver', 'min' => 25000, 'max' => 50000],
-            ['name' => 'gold', 'min' => 50000, 'max' => PHP_INT_MAX],
+            ['name' => 'bronze', 'min' => 0,     'max' => 25000,       'rate' => 10],
+            ['name' => 'silver', 'min' => 25000,  'max' => 50000,       'rate' => 20],
+            ['name' => 'gold',   'min' => 50000,  'max' => PHP_INT_MAX, 'rate' => 30],
         ];
 
-        $currentTierData = null;
+        $current = $tiers[0];
         foreach ($tiers as $tier) {
             if ($totalSales >= $tier['min'] && $totalSales < $tier['max']) {
-                $currentTierData = $tier;
+                $current = $tier;
                 break;
             }
         }
 
-        // Default to bronze if no tier found
-        if (!$currentTierData) {
-            $currentTierData = $tiers[0];
+        // Override with DB rate if tier record exists
+        $tierModel = AgentTier::where('name', $current['name'])->first();
+        if ($tierModel) {
+            $current['rate'] = (float) $tierModel->commission_rate;
         }
 
-        // Get tier commission rate from database
-        $tierModel = AgentTier::where('name', $currentTierData['name'])->first();
-        $commissionRate = $tierModel?->commission_rate ?? ($currentTierData['name'] === 'bronze' ? 10 : ($currentTierData['name'] === 'silver' ? 20 : 30));
-
-        // Calculate sales needed for next tier
-        $salesToNextTier = 0;
-        if ($currentTierData['name'] === 'bronze') {
-            $salesToNextTier = 25000 - $totalSales;
-        } elseif ($currentTierData['name'] === 'silver') {
-            $salesToNextTier = 50000 - $totalSales;
-        }
+        $salesToNext = 0;
+        if ($current['name'] === 'bronze') $salesToNext = max(0, 25000 - $totalSales);
+        if ($current['name'] === 'silver') $salesToNext = max(0, 50000 - $totalSales);
 
         return [
-            'name' => $currentTierData['name'],
-            'min_sales' => $currentTierData['min'],
-            'max_sales' => $currentTierData['max'],
-            'commission_rate' => $commissionRate,
-            'current_sales' => (float) $totalSales,
-            'sales_to_next_tier' => max(0, $salesToNextTier),
+            'name'              => $current['name'],
+            'commission_rate'   => $current['rate'],
+            'current_sales'     => $totalSales,
+            'sales_to_next_tier'=> $salesToNext,
         ];
     }
 
-    /**
-     * Get quarterly sales and orders data
-     */
-    private function getQuarterlyData(Agent $agent)
+    private function getQuarterlyData(Agent $agent): array
     {
-        $currentYear = Carbon::now()->year;
+        $year     = Carbon::now()->year;
         $quarters = [];
 
         for ($q = 1; $q <= 4; $q++) {
-            $startMonth = ($q - 1) * 3 + 1;
-            $endMonth = $q * 3;
-
-            $quarterStart = Carbon::createFromDate($currentYear, $startMonth, 1)->startOfMonth();
-            $quarterEnd = Carbon::createFromDate($currentYear, $endMonth, 1)->endOfMonth();
-
-            $sales = Order::where('agent_id', $agent->id)
-                ->whereBetween('created_at', [$quarterStart, $quarterEnd])
-                ->where('status', '!=', 'cancelled')
-                ->sum('total_amount');
-
-            $orders = Order::where('agent_id', $agent->id)
-                ->whereBetween('created_at', [$quarterStart, $quarterEnd])
-                ->where('status', '!=', 'cancelled')
-                ->count();
+            $start = Carbon::createFromDate($year, ($q - 1) * 3 + 1, 1)->startOfMonth();
+            $end   = Carbon::createFromDate($year, $q * 3, 1)->endOfMonth();
 
             $quarters[] = [
                 'quarter' => "Q{$q}",
-                'sales' => (float) $sales,
-                'orders' => $orders,
+                'sales'   => (float) Order::where('agent_id', $agent->id)
+                    ->whereBetween('created_at', [$start, $end])
+                    ->where('status', '!=', 'cancelled')
+                    ->sum('total_amount'),
+                'orders'  => Order::where('agent_id', $agent->id)
+                    ->whereBetween('created_at', [$start, $end])
+                    ->where('status', '!=', 'cancelled')
+                    ->count(),
             ];
         }
 
         return $quarters;
-    }
-
-    /**
-     * Get tier color for UI
-     */
-    private function getTierColor(string $tier)
-    {
-        return match ($tier) {
-            'bronze' => 'bronze',
-            'silver' => 'silver',
-            'gold' => 'gold',
-            default => 'bronze',
-        };
     }
 }

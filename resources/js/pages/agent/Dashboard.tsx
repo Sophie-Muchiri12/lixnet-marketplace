@@ -85,7 +85,7 @@ export default function AgentDashboard() {
             setLoading(true);
             setError(null);
 
-            const response = await axios.get('/api/agent/dashboard-ui', {
+            const response = await axios.get('/api/agent/dashboard', {
                 headers: {
                     'Accept': 'application/json',
                     'X-Requested-With': 'XMLHttpRequest',
