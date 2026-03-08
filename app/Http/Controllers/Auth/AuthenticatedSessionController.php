@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
-use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
@@ -34,32 +33,20 @@ class AuthenticatedSessionController extends Controller
 
         $user = Auth::user();
 
+        $redirectPath = match($user->role) {
+            'admin' => '/dashboard',
+            'agent' => '/agent/dashboard',
+            default => '/',
+        };
+
         if ($request->expectsJson()) {
             return response()->json([
-                'user' => $user,
-                'redirect' => $user->role === 'admin'
-                    ? route('dashboard')
-                    : ($user->role === 'agent'
-                        ? route('agent.dashboard')
-                        : route('marketplace')),
+                'user'     => $user,
+                'redirect' => $redirectPath,
             ]);
         }
 
-        $redirectRoute = null;
-
-        switch ($user->role) {
-            case 'admin':
-                $redirectRoute = 'dashboard';
-                break;
-            case 'agent':
-                $redirectRoute = 'agent.dashboard';
-                break;
-            default:
-                $redirectRoute = 'marketplace';
-                break;
-        }
-
-        return redirect()->intended(route($redirectRoute, absolute: false));
+        return redirect()->intended($redirectPath);
     }
 
     /**
@@ -74,8 +61,8 @@ class AuthenticatedSessionController extends Controller
 
         if ($request->expectsJson()) {
             return response()->json([
-                'message' => 'Logged out',
-                'redirect' => route('login')
+                'message'  => 'Logged out',
+                'redirect' => '/login',
             ]);
         }
 

@@ -15,6 +15,11 @@ use App\Http\Controllers\JobController;
 use App\Http\Controllers\JobApplicationController;
 use App\Http\Controllers\SubscriptionController;
 use App\Http\Controllers\SSOProductController;
+use App\Http\Controllers\Agent\DashboardController  as AgentDashboardController;
+use App\Http\Controllers\Agent\ProfileController    as AgentProfileController;
+use App\Http\Controllers\Agent\SalesController      as AgentSalesController;
+use App\Http\Controllers\Agent\CommissionsController as AgentCommissionsController;
+use App\Http\Controllers\Agent\MessagesController   as AgentMessagesController;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -255,5 +260,38 @@ Route::middleware(['web', 'auth', 'verified', 'admin'])->prefix('admin')->group(
         Route::delete('/{application}', [JobApplicationController::class, 'destroy']);
         Route::get('/{application}/download-resume', [JobApplicationController::class, 'downloadResume']);
     });
+
+});
+
+    Route::middleware(['web', 'auth', 'verified', 'agent'])->prefix('agent')->name('agent.api.')->group(function () {
+
+    // ── Dashboard ─────────────────────────────────────────────────────────────
+    Route::get('/dashboard', [AgentDashboardController::class, 'index'])
+        ->name('dashboard');
+
+    // ── Profile (GET + PUT) ───────────────────────────────────────────────────
+    Route::get('/profile',  [AgentProfileController::class, 'show'])
+        ->name('profile.show');
+
+    Route::put('/profile',  [AgentProfileController::class, 'update'])
+        ->name('profile.update');
+
+    // ── Sales (paginated list + single order detail) ──────────────────────────
+    Route::get('/sales',        [AgentSalesController::class, 'index'])
+        ->name('sales.index');
+
+    Route::get('/sales/{id}',   [AgentSalesController::class, 'show'])
+        ->name('sales.show');
+
+    // ── Commissions ───────────────────────────────────────────────────────────
+    Route::get('/commissions',  [AgentCommissionsController::class, 'index'])
+        ->name('commissions.index');
+
+    // ── Messages ──────────────────────────────────────────────────────────────
+    Route::get('/messages',     [AgentMessagesController::class, 'index'])
+        ->name('messages.index');
+
+    Route::post('/messages',    [AgentMessagesController::class, 'store'])
+        ->name('messages.store');
 
 });

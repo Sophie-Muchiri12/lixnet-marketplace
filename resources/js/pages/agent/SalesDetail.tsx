@@ -75,7 +75,7 @@ export default function AgentSalesDetail({ orderId }: Props) {
             setLoading(true);
             setError(null);
 
-            const response = await axios.get(`/api/agent/sales-data/${orderId}`, {
+            const response = await axios.get(`/api/agent/sales/${orderId}`, {
                 headers: {
                     'Accept': 'application/json',
                     'X-Requested-With': 'XMLHttpRequest',

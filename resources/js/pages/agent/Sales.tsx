@@ -91,7 +91,7 @@ export default function AgentSales() {
             if (statusFilter !== 'all') params.append('status', statusFilter);
             if (searchQuery) params.append('search', searchQuery);
 
-            const response = await axios.get(`/api/agent/sales-data?${params}`, {
+            const response = await axios.get(`/api/agent/sales?${params}`, {
                 headers: {
                     'Accept': 'application/json',
                     'X-Requested-With': 'XMLHttpRequest',
