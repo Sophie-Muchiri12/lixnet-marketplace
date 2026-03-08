@@ -44,23 +44,19 @@ Route::get('/cart', function () {
     return Inertia::render('Cart');
 })->name('cart');
 
-// Add the checkout route here
 Route::get('/checkout', function () {
     return Inertia::render('user/Checkout');
 })->name('checkout');
 
-// Product details route (singular /product to avoid API /products conflict)
 Route::get('/product/{product}', function (App\Models\Product $product) {
     return Inertia::render('ProductDetails', [
         'product' => $product->load('category'),
     ]);
 })->name('products.show');
 
-// My subscriptions route
 Route::get('/my-subscriptions', function () {
     return Inertia::render('UserSubscriptions');
 })->middleware(['auth'])->name('subscriptions.index');
-
 
 
 /*
@@ -83,7 +79,6 @@ Route::middleware(['auth', 'customer'])->group(function () {
         return Inertia::render('user/Orders');
     })->name('orders');
 
-    // Individual order detail page - MUST be after /orders to avoid route conflicts
     Route::get('/orders/{id}', function ($id) {
         return Inertia::render('user/OrderDetail', [
             'orderId' => $id,
@@ -102,6 +97,7 @@ Route::middleware(['auth', 'customer'])->group(function () {
 */
 
 Route::middleware(['auth', 'verified', 'agent'])->prefix('agent')->name('agent.')->group(function () {
+
     Route::get('dashboard', function () {
         return Inertia::render('agent/Dashboard');
     })->name('dashboard');
@@ -109,6 +105,10 @@ Route::middleware(['auth', 'verified', 'agent'])->prefix('agent')->name('agent.'
     Route::get('profile', function () {
         return Inertia::render('agent/Profile');
     })->name('profile');
+
+    Route::get('products', function () {
+        return Inertia::render('agent/Products');
+    })->name('products');
 
     Route::get('sales', function () {
         return Inertia::render('agent/Sales');
@@ -119,6 +119,22 @@ Route::middleware(['auth', 'verified', 'agent'])->prefix('agent')->name('agent.'
             'orderId' => $orderId,
         ]);
     })->name('sales.detail');
+
+    Route::get('commissions', function () {
+        return Inertia::render('agent/Commissions');
+    })->name('commissions');
+
+    Route::get('messages', function () {
+        return Inertia::render('agent/Messages');
+    })->name('messages');
+
+    Route::get('billing', function () {
+        return Inertia::render('agent/Billing');
+    })->name('billing');
+
+    Route::get('certifications', function () {
+        return Inertia::render('agent/Certifications');
+    })->name('certifications');
 });
 
 
@@ -146,7 +162,6 @@ Route::middleware(['auth', 'verified', 'admin'])->prefix('admin')->name('admin.'
         ]);
     })->name('userdetails');
 
-    // Categories management
     Route::get('categories', function () {
         return Inertia::render('admin/categories');
     })->name('categories');
@@ -161,7 +176,6 @@ Route::middleware(['auth', 'verified', 'admin'])->prefix('admin')->name('admin.'
         ]);
     })->name('categories.edit');
 
-    // Products management
     Route::get('products', function () {
         return Inertia::render('admin/products');
     })->name('products');
@@ -176,7 +190,6 @@ Route::middleware(['auth', 'verified', 'admin'])->prefix('admin')->name('admin.'
         ]);
     })->name('products.edit');
 
-    // Jobs management
     Route::get('jobs', function () {
         return Inertia::render('admin/jobs');
     })->name('jobs');
@@ -191,12 +204,10 @@ Route::middleware(['auth', 'verified', 'admin'])->prefix('admin')->name('admin.'
         ]);
     })->name('jobs.edit');
 
-    // Job applications management
     Route::get('job-applications', function () {
         return Inertia::render('admin/job-applications');
     })->name('job-applications');
 
-    // Agent applications management
     Route::get('agent-applications', function () {
         return Inertia::render('admin/agent-applications/index');
     })->name('agent-applications');
@@ -209,13 +220,12 @@ Route::middleware(['auth', 'verified', 'admin'])->prefix('admin')->name('admin.'
 });
 
 
-     Route::get('/billing', function () {
-        $categories = App\Models\Category::all();
-        return Inertia::render('billing-history-page', [
-            'categories' => $categories,
-        ]);
-    })->name('billing.index');
-
+Route::get('/billing', function () {
+    $categories = App\Models\Category::all();
+    return Inertia::render('billing-history-page', [
+        'categories' => $categories,
+    ]);
+})->name('billing.index');
 
 
 require __DIR__.'/settings.php';
