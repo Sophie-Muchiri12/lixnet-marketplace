@@ -5,7 +5,7 @@ import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, Sid
 import { dashboard } from '@/routes';
 import { type NavItem } from '@/types';
 import { Link } from '@inertiajs/react';
-import { BookOpen, Folder, LayoutGrid, ShoppingCart, User, UserPen, Users, Briefcase } from 'lucide-react';
+import { BookOpen, Folder, LayoutGrid, ShoppingCart, User, UserPen, Users, Briefcase, MessageSquare, Award, Receipt, TrendingUp, ShoppingBag } from 'lucide-react';
 import AppLogo from './app-logo';
 import { useAuth } from '@/context/auth-context';
 import { useEffect } from 'react';
@@ -75,7 +75,7 @@ export function AppSidebar() {
                         icon: UserPen,
                     },
                 ],
-            }
+            },
         ]
         : [
             {
@@ -84,20 +84,43 @@ export function AppSidebar() {
                 icon: LayoutGrid,
             },
             {
-                title: 'Sales',
-                href: '/agent/sales',
-                icon: Folder,
+                title: 'Products',
+                href: '/agent/products',
+                icon: ShoppingBag,
             },
             {
-                title: 'Earnings',
-                href: '/agent/earnings',
+                title: 'My Profile',
+                href: '/agent/profile',
+                icon: User,
+            },
+            {
+                title: 'Sales',
+                href: '/agent/sales',
+                icon: TrendingUp,
+            },
+            {
+                title: 'Commissions',
+                href: '/agent/commissions',
                 icon: BookOpen,
+            },
+            {
+                title: 'Messages',
+                href: '/agent/messages',
+                icon: MessageSquare,
+            },
+            {
+                title: 'Billing',
+                href: '/agent/billing',
+                icon: Receipt,
+            },
+            {
+                title: 'Certifications',
+                href: '/agent/certifications',
+                icon: Award,
             },
         ];
 
-    const footerNavItems: NavItem[] = [
-
-    ];
+    const footerNavItems: NavItem[] = [];
 
     return (
         <Sidebar collapsible="icon" variant="inset">
