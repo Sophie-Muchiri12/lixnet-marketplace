@@ -20,6 +20,7 @@ use App\Http\Controllers\Agent\ProfileController    as AgentProfileController;
 use App\Http\Controllers\Agent\SalesController      as AgentSalesController;
 use App\Http\Controllers\Agent\CommissionsController as AgentCommissionsController;
 use App\Http\Controllers\Agent\MessagesController   as AgentMessagesController;
+use App\Http\Controllers\Agent\AgentCodeController;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;

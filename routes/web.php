@@ -54,6 +54,8 @@ Route::get('/product/{product}', function (App\Models\Product $product) {
     ]);
 })->name('products.show');
 
+Route::get('/agent-code/lookup', [AgentCodeController::class, 'lookup']);
+
 Route::get('/my-subscriptions', function () {
     return Inertia::render('UserSubscriptions');
 })->middleware(['auth'])->name('subscriptions.index');

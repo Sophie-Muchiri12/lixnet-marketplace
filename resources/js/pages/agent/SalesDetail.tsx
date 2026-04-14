@@ -17,6 +17,8 @@ import {
     FileText,
     Package,
     DollarSign,
+    UserCheck,
+    Tag,
 } from 'lucide-react';
 import axios from 'axios';
 
@@ -48,6 +50,11 @@ interface Order {
     created_at: string;
     updated_at: string;
     items: OrderItem[];
+    // Agent / discount fields (present when order was agent-assisted)
+    agent_code: string | null;
+    agent_name: string | null;
+    discount_percentage: number | null;
+    discount_amount: number | null;
 }
 
 export default function AgentSalesDetail({ orderId }: Props) {
@@ -56,17 +63,11 @@ export default function AgentSalesDetail({ orderId }: Props) {
     const [error, setError] = useState<string | null>(null);
 
     const breadcrumbs: BreadcrumbItem[] = [
-        {
-            title: 'Dashboard',
-            href: '/agent/dashboard',
-        },
-        {
-            title: 'Sales',
-            href: '/agent/sales',
-        },
+        { title: 'Dashboard', href: '/agent/dashboard' },
+        { title: 'Sales',     href: '/agent/sales' },
         {
             title: order?.order_reference || 'Order Details',
-            href: `/agent/sales/${orderId}`,
+            href:  `/agent/sales/${orderId}`,
         },
     ];
 
@@ -74,17 +75,16 @@ export default function AgentSalesDetail({ orderId }: Props) {
         try {
             setLoading(true);
             setError(null);
-
             const response = await axios.get(`/api/agent/sales/${orderId}`, {
                 headers: {
-                    'Accept': 'application/json',
+                    'Accept':           'application/json',
                     'X-Requested-With': 'XMLHttpRequest',
                 },
             });
-
             setOrder(response.data.order);
         } catch (err: any) {
-            const errorMessage = err.response?.data?.message || err.message || 'Failed to fetch order details';
+            const errorMessage =
+                err.response?.data?.message || err.message || 'Failed to fetch order details';
             setError(errorMessage);
             toast.error(errorMessage);
         } finally {
@@ -92,36 +92,24 @@ export default function AgentSalesDetail({ orderId }: Props) {
         }
     };
 
-    useEffect(() => {
-        fetchOrderDetails();
-    }, [orderId]);
+    useEffect(() => { fetchOrderDetails(); }, [orderId]);
 
-    const formatCurrency = (amount: number) => {
-        return new Intl.NumberFormat('en-US', {
-            style: 'currency',
-            currency: 'USD',
-        }).format(amount);
-    };
+    const formatCurrency = (amount: number) =>
+        new Intl.NumberFormat('en-KE', { style: 'currency', currency: 'KES' }).format(amount);
 
-    const formatDate = (dateString: string) => {
-        return new Date(dateString).toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric',
-            hour: '2-digit',
+    const formatDate = (dateString: string) =>
+        new Date(dateString).toLocaleDateString('en-US', {
+            year:   'numeric',
+            month:  'short',
+            day:    'numeric',
+            hour:   '2-digit',
             minute: '2-digit',
         });
-    };
 
-    const getStatusBadgeVariant = (status: string) => {
-        const variants: Record<string, any> = {
-            completed: 'default',
-            paid: 'default',
-            pending: 'secondary',
-            cancelled: 'destructive',
-        };
-        return variants[status] || 'secondary';
-    };
+    const getStatusBadgeVariant = (status: string): any =>
+        ({ completed: 'default', paid: 'default', pending: 'secondary', cancelled: 'destructive' }[status] ?? 'secondary');
+
+    // ── Loading ───────────────────────────────────────────────────────────────
 
     if (loading) {
         return (
@@ -155,18 +143,19 @@ export default function AgentSalesDetail({ orderId }: Props) {
         );
     }
 
+    const hasDiscount = order.discount_amount != null && order.discount_amount > 0;
+
+    // ── Render ────────────────────────────────────────────────────────────────
+
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={`${order.order_reference} - Order Details`} />
 
             <div className="space-y-6 p-4">
+                {/* Header */}
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => router.visit('/agent/sales')}
-                        >
+                        <Button variant="outline" size="sm" onClick={() => router.visit('/agent/sales')}>
                             <ArrowLeft className="h-4 w-4 mr-2" />
                             Back to Sales
                         </Button>
@@ -183,114 +172,74 @@ export default function AgentSalesDetail({ orderId }: Props) {
                 <div className="grid gap-6 md:grid-cols-2">
                     {/* Customer Information */}
                     <Card>
-                        <CardHeader>
-                            <CardTitle>Customer Information</CardTitle>
-                        </CardHeader>
+                        <CardHeader><CardTitle>Customer Information</CardTitle></CardHeader>
                         <CardContent>
                             <div className="space-y-4">
-                                <div className="flex items-start gap-3">
-                                    <FileText className="h-5 w-5 text-muted-foreground mt-0.5" />
-                                    <div>
-                                        <p className="text-sm font-medium">Full Name</p>
-                                        <p className="text-sm text-muted-foreground">{order.full_name}</p>
-                                    </div>
-                                </div>
-
-                                <div className="flex items-start gap-3">
-                                    <Mail className="h-5 w-5 text-muted-foreground mt-0.5" />
-                                    <div>
-                                        <p className="text-sm font-medium">Email</p>
-                                        <p className="text-sm text-muted-foreground">{order.email}</p>
-                                    </div>
-                                </div>
-
-                                {order.phone && (
-                                    <div className="flex items-start gap-3">
-                                        <Phone className="h-5 w-5 text-muted-foreground mt-0.5" />
-                                        <div>
-                                            <p className="text-sm font-medium">Phone</p>
-                                            <p className="text-sm text-muted-foreground">{order.phone}</p>
-                                        </div>
-                                    </div>
-                                )}
-
-                                {order.company && (
-                                    <div className="flex items-start gap-3">
-                                        <Building2 className="h-5 w-5 text-muted-foreground mt-0.5" />
-                                        <div>
-                                            <p className="text-sm font-medium">Company</p>
-                                            <p className="text-sm text-muted-foreground">{order.company}</p>
-                                        </div>
-                                    </div>
-                                )}
-
-                                {order.notes && (
-                                    <div className="flex items-start gap-3">
-                                        <FileText className="h-5 w-5 text-muted-foreground mt-0.5" />
-                                        <div>
-                                            <p className="text-sm font-medium">Notes</p>
-                                            <p className="text-sm text-muted-foreground">{order.notes}</p>
-                                        </div>
-                                    </div>
-                                )}
+                                <InfoRow icon={<FileText />}  label="Full Name" value={order.full_name} />
+                                <InfoRow icon={<Mail />}      label="Email"     value={order.email} />
+                                {order.phone   && <InfoRow icon={<Phone />}    label="Phone"   value={order.phone} />}
+                                {order.company && <InfoRow icon={<Building2 />} label="Company" value={order.company} />}
+                                {order.notes   && <InfoRow icon={<FileText />}  label="Notes"   value={order.notes} />}
                             </div>
                         </CardContent>
                     </Card>
 
                     {/* Order Details */}
                     <Card>
-                        <CardHeader>
-                            <CardTitle>Order Details</CardTitle>
-                        </CardHeader>
+                        <CardHeader><CardTitle>Order Details</CardTitle></CardHeader>
                         <CardContent>
                             <div className="space-y-4">
-                                <div className="flex items-start gap-3">
-                                    <Calendar className="h-5 w-5 text-muted-foreground mt-0.5" />
-                                    <div>
-                                        <p className="text-sm font-medium">Order Date</p>
-                                        <p className="text-sm text-muted-foreground">{formatDate(order.created_at)}</p>
-                                    </div>
-                                </div>
-
-                                <div className="flex items-start gap-3">
-                                    <Calendar className="h-5 w-5 text-muted-foreground mt-0.5" />
-                                    <div>
-                                        <p className="text-sm font-medium">Last Updated</p>
-                                        <p className="text-sm text-muted-foreground">{formatDate(order.updated_at)}</p>
-                                    </div>
-                                </div>
-
+                                <InfoRow icon={<Calendar />}  label="Order Date"   value={formatDate(order.created_at)} />
+                                <InfoRow icon={<Calendar />}  label="Last Updated" value={formatDate(order.updated_at)} />
                                 {order.payment_reference && (
-                                    <div className="flex items-start gap-3">
-                                        <CreditCard className="h-5 w-5 text-muted-foreground mt-0.5" />
-                                        <div>
-                                            <p className="text-sm font-medium">Payment Reference</p>
-                                            <p className="text-sm text-muted-foreground">{order.payment_reference}</p>
-                                        </div>
-                                    </div>
+                                    <InfoRow icon={<CreditCard />} label="Payment Reference" value={order.payment_reference} />
                                 )}
-
                                 {order.paid_at && (
-                                    <div className="flex items-start gap-3">
-                                        <Calendar className="h-5 w-5 text-muted-foreground mt-0.5" />
-                                        <div>
-                                            <p className="text-sm font-medium">Paid At</p>
-                                            <p className="text-sm text-muted-foreground">{formatDate(order.paid_at)}</p>
-                                        </div>
-                                    </div>
+                                    <InfoRow icon={<Calendar />} label="Paid At" value={formatDate(order.paid_at)} />
                                 )}
-
-                                <div className="flex items-start gap-3">
-                                    <DollarSign className="h-5 w-5 text-muted-foreground mt-0.5" />
-                                    <div>
-                                        <p className="text-sm font-medium">Currency</p>
-                                        <p className="text-sm text-muted-foreground">{order.currency}</p>
-                                    </div>
-                                </div>
+                                <InfoRow icon={<DollarSign />} label="Currency" value={order.currency} />
                             </div>
                         </CardContent>
                     </Card>
                 </div>
+
+                {/* Agent / Referral Info — only shown when an agent code was used */}
+                {order.agent_code && (
+                    <Card className="border-green-200 bg-green-50">
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2 text-green-800">
+                                <UserCheck className="h-5 w-5" />
+                                Agent Attribution
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="grid gap-4 sm:grid-cols-3">
+                                <div>
+                                    <p className="text-xs font-medium text-green-700 uppercase tracking-wide">Agent Code</p>
+                                    <p className="mt-1 font-mono font-semibold text-green-900">{order.agent_code}</p>
+                                </div>
+                                {order.agent_name && (
+                                    <div>
+                                        <p className="text-xs font-medium text-green-700 uppercase tracking-wide">Agent Name</p>
+                                        <p className="mt-1 font-semibold text-green-900">{order.agent_name}</p>
+                                    </div>
+                                )}
+                                {hasDiscount && (
+                                    <div>
+                                        <p className="text-xs font-medium text-green-700 uppercase tracking-wide">Discount Applied</p>
+                                        <p className="mt-1 flex items-center gap-1 font-semibold text-green-900">
+                                            <Tag className="h-4 w-4" />
+                                            {order.discount_percentage != null
+                                                ? `${order.discount_percentage}% — `
+                                                : ''}
+                                            {formatCurrency(order.discount_amount!)} off
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
+                        </CardContent>
+                    </Card>
+                )}
 
                 {/* Order Items */}
                 <Card>
@@ -307,48 +256,91 @@ export default function AgentSalesDetail({ orderId }: Props) {
                                 <p className="text-muted-foreground">No items in this order</p>
                             </div>
                         ) : (
-                            <>
-                                <div className="overflow-x-auto">
-                                    <table className="w-full">
-                                        <thead className="border-b">
-                                            <tr className="text-sm">
-                                                <th className="px-6 py-3 text-left font-medium">Product</th>
-                                                <th className="px-6 py-3 text-center font-medium">Quantity</th>
-                                                <th className="px-6 py-3 text-right font-medium">Unit Price</th>
-                                                <th className="px-6 py-3 text-right font-medium">Total</th>
+                            <div className="overflow-x-auto">
+                                <table className="w-full">
+                                    <thead className="border-b">
+                                        <tr className="text-sm">
+                                            <th className="px-6 py-3 text-left font-medium">Product</th>
+                                            <th className="px-6 py-3 text-center font-medium">Qty</th>
+                                            <th className="px-6 py-3 text-right font-medium">Unit Price</th>
+                                            <th className="px-6 py-3 text-right font-medium">Total</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y">
+                                        {order.items.map((item) => (
+                                            <tr key={item.id} className="hover:bg-muted/50">
+                                                <td className="px-6 py-4 font-medium">{item.product_name}</td>
+                                                <td className="px-6 py-4 text-center">{item.quantity}</td>
+                                                <td className="px-6 py-4 text-right">{formatCurrency(item.unit_price)}</td>
+                                                <td className="px-6 py-4 text-right font-medium">{formatCurrency(item.total_price)}</td>
                                             </tr>
-                                        </thead>
-                                        <tbody className="divide-y">
-                                            {order.items.map((item) => (
-                                                <tr key={item.id} className="hover:bg-muted/50">
-                                                    <td className="px-6 py-4 font-medium">{item.product_name}</td>
-                                                    <td className="px-6 py-4 text-center">{item.quantity}</td>
-                                                    <td className="px-6 py-4 text-right">
-                                                        {formatCurrency(item.unit_price)}
+                                        ))}
+                                    </tbody>
+                                    <tfoot className="border-t bg-muted/20">
+                                        {/* Subtotal before discount */}
+                                        {hasDiscount && (
+                                            <>
+                                                <tr>
+                                                    <td colSpan={3} className="px-6 py-2 text-right text-sm text-muted-foreground">
+                                                        Subtotal
                                                     </td>
-                                                    <td className="px-6 py-4 text-right font-medium">
-                                                        {formatCurrency(item.total_price)}
+                                                    <td className="px-6 py-2 text-right text-sm text-muted-foreground">
+                                                        {formatCurrency(order.total_amount + order.discount_amount!)}
                                                     </td>
                                                 </tr>
-                                            ))}
-                                        </tbody>
-                                        <tfoot className="border-t bg-muted/20">
-                                            <tr>
-                                                <td colSpan={3} className="px-6 py-4 text-right font-bold">
-                                                    Total Amount
-                                                </td>
-                                                <td className="px-6 py-4 text-right font-bold text-lg">
-                                                    {formatCurrency(order.total_amount)}
-                                                </td>
-                                            </tr>
-                                        </tfoot>
-                                    </table>
-                                </div>
-                            </>
+                                                <tr>
+                                                    <td colSpan={3} className="px-6 py-2 text-right text-sm text-green-700 font-medium">
+                                                        <span className="flex items-center justify-end gap-1">
+                                                            <Tag className="h-3.5 w-3.5" />
+                                                            Agent Discount
+                                                            {order.discount_percentage != null
+                                                                ? ` (${order.discount_percentage}%)`
+                                                                : ''}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-6 py-2 text-right text-sm text-green-700 font-medium">
+                                                        − {formatCurrency(order.discount_amount!)}
+                                                    </td>
+                                                </tr>
+                                            </>
+                                        )}
+                                        <tr>
+                                            <td colSpan={3} className="px-6 py-4 text-right font-bold">
+                                                Total Amount
+                                            </td>
+                                            <td className="px-6 py-4 text-right font-bold text-lg">
+                                                {formatCurrency(order.total_amount)}
+                                            </td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
                         )}
                     </CardContent>
                 </Card>
             </div>
         </AppLayout>
+    );
+}
+
+// ─── Shared helper component ───────────────────────────────────────────────────
+
+function InfoRow({
+    icon,
+    label,
+    value,
+}: {
+    icon: React.ReactNode;
+    label: string;
+    value: string;
+}) {
+    return (
+        <div className="flex items-start gap-3">
+            <span className="h-5 w-5 text-muted-foreground mt-0.5 shrink-0">{icon}</span>
+            <div>
+                <p className="text-sm font-medium">{label}</p>
+                <p className="text-sm text-muted-foreground">{value}</p>
+            </div>
+        </div>
     );
 }
